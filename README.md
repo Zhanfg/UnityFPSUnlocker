@@ -1,8 +1,20 @@
 # UnityFPSUnlocker — OEM-preserving Zygisk fork (experimental)
 
 > Upstream: [hexstr/UnityFPSUnlocker](https://github.com/hexstr/UnityFPSUnlocker), MIT License.
-> This fork's **feature/oem-fengchi-passive-fps-v1** branch is a source-level safety iteration.
-> It has **not** been verified on a real ColorOS/OxygenOS device or released as a flashable ZIP.
+> This fork's **feature/oem-fengchi-passive-fps-v1** is an experimental cross-device Fengchi-aware iteration.
+> CI produces a flashable ARM64 test ZIP. It has **not** been verified on real Fengchi devices.
+
+## Device-independent Fengchi support / 跨设备风驰支持
+
+- No OnePlus 13 / SM8750 hardcode. Detect separate OPlus scheduler, game-opt,
+  frame-sync, early-detect and GEAS interfaces at runtime, read-only.
+- Interfaces vary by device/firmware. Probe output is a *hint*, not a promise
+  that OEM Fengchi superframe is active or a specific frame rate is supported.
+- **144 FPS OEM superframe is not the same as 144 Hz panel refresh.** Do not
+  impose a 120 cap based only on the official panel specification.
+- 144, 165 and 185 are valid *native FPS target requests* in the allowlist;
+  no OEM frame generation API has been implemented in this fork.
+- Full details: [FENGCHI_UNIVERSAL.md](docs/FENGCHI_UNIVERSAL.md).
 
 ## Goal / 目标
 
@@ -74,7 +86,7 @@ An entry with no FPS (or with `fps: 0`) remains inactive.
 Explicit scaling is experimental and may interfere with the game's resolution
 handling or OEM super-resolution; leave it disabled for normal gaming.
 
-**120 FPS is a request, not a guarantee.** Actual rendered frames and displayed
+**120 / 144 / 165 / 185 native FPS are requests, not guarantees.** Actual rendered frames and displayed
 frames depend on the game, OEM pipeline, thermal limits and refresh modes.
 Do not combine it with separate frame-interpolation modules without testing.
 
@@ -86,9 +98,18 @@ c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/oem_policy_test.cpp -o /tmp
 /tmp/oem_policy_test
 ```
 
-The above only tests policy and safe defaults; it does not compile the Android
-Zygisk library or prove runtime compatibility. No flashable release is currently
-produced by this repository's policy CI workflow.
+The policy CI checks default safety and synthetic Fengchi interface layouts.
+The separate Android ARM64 CI compiles a Zygisk library and packages a test ZIP.
+Neither CI proves OEM superframe functionality or real-device compatibility.
+
+Run the read-only capability probe after installation:
+
+```sh
+su -c 'sh /data/adb/modules/unityfpsunlocker_oemsafe/fengchi-probe.sh'
+```
+
+The output does not enable any OEM feature, and missing nodes do not prove
+Fengchi is absent.
 
 ## Upstream and license
 
