@@ -1,0 +1,64 @@
+name: Android ARM64 Zygisk Build
+
+on:
+  push:
+    branches: [zygisk_module, 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Android NDK
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Get Abseil
+        run: |
+          git clone --depth=1 --branch 20240116.2 https://github.com/abseil/abseil-cpp.git .out/abseil-source
+      - name: Build Android Abseil
+        run: |
+          cmake -S .out/abseil-source -B .out/abseil-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
+            -DABSL_PROPAGATE_CXX_STD=ON -DABSL_ENABLE_INSTALL=ON \
+            -DABSL_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/.out/abseil-install"
+          cmake --build .out/abseil-build --parallel 4
+          cmake --install .out/abseil-build
+      - name: Build Zygisk ARM64 library
+        run: |
+          cmake -S . -B .out/unity-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/.out/abseil-install" \
+            -Dabsl_DIR="$GITHUB_WORKSPACE/.out/abseil-install/lib/cmake/absl" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH
+          cmake --build .out/unity-build --parallel 4
+          test -s libs/Release/arm64-v8a.so
+      - name: Package minimal non-invasive module
+        run: |
+          mkdir -p .out/module/zygisk .out/dist
+          cp packaging/module.prop .out/module/module.prop
+          cp packaging/post-fs-data.sh .out/module/post-fs-data.sh
+          cp TargetList.json .out/module/TargetList.json
+          cp packaging/fengchi-probe.sh .out/module/fengchi-probe.sh
+          cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
+          chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh
+          cd .out/module
+          zip -r -9 ../dist/UnityFPSUnlocker-FengchiUniversal-arm64-alpha2.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UnityFPSUnlocker-FengchiUniversal-arm64-alpha2
+          path: .out/dist/UnityFPSUnlocker-FengchiUniversal-arm64-alpha2.zip
+          if-no-files-found: error

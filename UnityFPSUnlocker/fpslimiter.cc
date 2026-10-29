@@ -34,7 +34,10 @@ namespace FPSLimiter {
         }
         if (handle) {
             Unity::GetInstance().Init(handle);
-            Unity::GetInstance().SetFrameRate(cfg.fps_, cfg.mod_opcode_);
+            if (cfg.mod_opcode_) {
+                LOG("OEM-safe build: opcode modification was requested but is disabled");
+            }
+            Unity::GetInstance().SetFrameRate(cfg.fps_, false);
             Unity::GetInstance().SetResolution(cfg.scale_);
 
             LOG("***** finished *****");

@@ -3,6 +3,7 @@
 #include <xdl.h>
 
 #include "utility/config.hh"
+#include "utility/oem_policy.hh"
 #include "utility/logger.hh"
 
 void Unity::Init(void* handle) {
@@ -62,8 +63,11 @@ Resolution Unity::GetResolution() {
 }
 
 void Unity::SetResolution(float scale) {
+    if (!OemPolicy::ShouldSetResolution(scale)) {
+        return;
+    }
     Resolution resolution = GetSystemExtImpl();
-    if (scale > 0 && resolution.m_Width > 0) {
+    if (resolution.m_Width > 0 && resolution.m_Height > 0) {
         auto target_width = static_cast<int32_t>(resolution.m_Width * scale);
         auto target_height = static_cast<int32_t>(resolution.m_Height * scale);
         int preferred_refresh_rate = 0;
@@ -71,7 +75,8 @@ void Unity::SetResolution(float scale) {
         if (SetResolution_Internal) {
             LOG("Set resolution: %d x %d", target_width, target_height);
             SetResolution_Internal(target_width, target_height, 1, &preferred_refresh_rate);
-            Utility::NopFunc(reinterpret_cast<unsigned char*>(SetResolution_Internal));
+            // Preserve Unity and OEM rendering pipelines: never replace this
+            // function with an unconditional return instruction.
         }
         else if (screen_manager_) {
             LOG("Set resolution: %d x %d", target_width, target_height);
