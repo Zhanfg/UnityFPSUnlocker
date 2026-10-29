@@ -26,7 +26,8 @@ else()
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s -Wl,--exclude-libs,ALL -Wl,--gc-sections -flto")
 endif()
 
-set(CMAKE_PREFIX_PATH "${CMAKE_SYSROOT}/${CMAKE_LIBRARY_ARCHITECTURE}")
+# Preserve caller-provided cross-compiled dependency prefixes (e.g. Abseil).
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SYSROOT}/${CMAKE_LIBRARY_ARCHITECTURE}")
 message(STATUS CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH})
 
 # 添加头文件
