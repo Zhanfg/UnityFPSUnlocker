@@ -1,0 +1,20 @@
+name: OEM-preserving FPS policy
+
+on:
+  push:
+    branches: [zygisk_module, 'feature/**']
+  pull_request:
+
+jobs:
+  policy-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check opt-in default configuration
+        run: python3 tests/check_safe_defaults.py
+      - name: Compile and run C++ policy tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/oem_policy_test.cpp -o /tmp/oem_policy_test
+          /tmp/oem_policy_test
