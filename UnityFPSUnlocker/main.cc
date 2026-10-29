@@ -16,6 +16,7 @@
 #include "file_watch/dispatcher/epoller.hh"
 #include "file_watch/listener.hh"
 #include "fpslimiter.hh"
+#include "utility/oem_policy.hh"
 #include "third/riru_hide/hide.hh"
 #include "utility/houdini.hh"
 #include "utility/socket.hh"
@@ -221,11 +222,13 @@ void MyModule::ForHoudini() {
 }
 
 void MyModule::postAppSpecialize(const AppSpecializeArgs* args) {
-    auto path = absl::Substitute("/sdcard/Android/data/$0/files/il2cpp", package_name_);
-    if ((has_custom_cfg_ || access(path.c_str(), F_OK) == 0) && current_cfg_.fps_ > 0) {
+    // Do not auto-inject into every IL2CPP title: OEM game rendering and
+    // frame-generation services must remain untouched unless explicitly selected.
+    if (OemPolicy::AllowNativeFps(has_custom_cfg_ != 0, current_cfg_.fps_)) {
 #if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-        std::thread([=]() {
-            FPSLimiter::Start(current_cfg_);
+        const ConfigValue config = current_cfg_;
+        std::thread([config]() {
+            FPSLimiter::Start(config);
         }).detach();
 #endif
         ForHoudini();
