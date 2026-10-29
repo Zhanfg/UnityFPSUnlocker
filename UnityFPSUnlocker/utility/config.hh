@@ -15,8 +15,8 @@
 class ConfigValue {
 public:
     int delay_ = 5;
-    int fps_ = 90;
-    bool mod_opcode_ = true;
+    int fps_ = 0;
+    bool mod_opcode_ = false;
     float scale_ = -1;
 
     ConfigValue(){};
