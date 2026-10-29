@@ -1,0 +1,6 @@
+id=unityfpsunlocker_oemsafe
+name=Unity FPS Unlocker - OEM Safe
+version=0.1.0-alpha1
+versionCode=1
+author=hexstr contributors; OEM-safe fork maintainers
+description=Opt-in Unity IL2CPP FPS targets without modifying OPlus OEM display/driver stack. ARM64 experimental.
