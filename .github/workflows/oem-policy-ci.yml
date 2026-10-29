@@ -18,3 +18,9 @@ jobs:
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/oem_policy_test.cpp -o /tmp/oem_policy_test
           /tmp/oem_policy_test
+      - name: Probe multiple OEM kernel interface layouts
+        run: |
+          sh -n packaging/fengchi-probe.sh
+          sh tests/test_fengchi_probe.sh
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/fengchi_probe_test.cpp -o /tmp/fengchi_probe_test
+          /tmp/fengchi_probe_test
