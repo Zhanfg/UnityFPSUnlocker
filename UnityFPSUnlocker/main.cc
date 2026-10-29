@@ -17,6 +17,7 @@
 #include "file_watch/listener.hh"
 #include "fpslimiter.hh"
 #include "utility/oem_policy.hh"
+#include "utility/fengchi_probe.hh"
 #include "third/riru_hide/hide.hh"
 #include "utility/houdini.hh"
 #include "utility/socket.hh"
@@ -102,6 +103,13 @@ void CompanionEntry(int s) {
     if (is_loaded == false) {
         if (auto res = LoadConfig(); res.ok()) {
             is_loaded = true;
+            // Device-agnostic detection; never writes OEM scheduling controls.
+            // Independent feature flags avoid incorrectly requiring every OEM
+            // module to expose the same procfs nodes across kernel versions.
+            const auto oem = FengchiProbe::Detect();
+            LOG("[OEM probe] hmbird=%d game_opt=%d frame_sync=%d early_detect=%d geas=%d candidate=%d",
+                oem.hmbird_scheduler, oem.game_opt, oem.frame_sync,
+                oem.early_detect, oem.geas_control, oem.HasVendorGamePath());
             file_watch_listener = new FileWatch::Listener();
             EPoller* file_watch_poller = new EPoller(file_watch_listener);
             EPoller::reserved_list_.push_back(file_watch_poller);
