@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>FPS Control</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="mast">
+ <div class="mark">F<span>+</span></div>
+ <div><div class="eyebrow">UNITY · ROOT MODULE</div><h1>Frame Control</h1></div>
+ <span class="ver">v0.4 · DEV</span>
+</header>
+<main class="shell">
+ <div class="intro"><h2>游戏与性能配置</h2><p>扫描应用，选择目标游戏，为每款游戏独立固定帧率和频率策略。所有配置仅保存在本机。</p></div>
+ <div id="notice" class="notice" role="status">正在连接 Root WebUI…</div>
+ <div class="layout">
+ <section class="panel library">
+  <div class="paneltop"><h3>应用列表 <small id="count">0</small></h3><button id="rescan" class="outline">重新扫描</button></div>
+  <input id="search" type="search" placeholder="搜索游戏名称 / 包名…" autocomplete="off" aria-label="搜索已安装应用">
+  <div class="filterbar">
+    <button data-filter="games" class="filter on">游戏候选</button>
+    <button data-filter="all" class="filter">全部应用</button>
+    <button data-filter="saved" class="filter">已配置</button>
+  </div>
+  <div id="apps" class="apps" aria-label="应用列表"></div>
+  <div class="manual"><label for="manualpkg">没有找到？手动添加包名</label><div class="manualrow"><input id="manualpkg" placeholder="com.example.game"><button id="manualadd" class="outline">选择</button></div></div>
+ </section>
+ <section class="panel editor">
+  <div class="paneltop"><h3>游戏配置</h3><span id="status" class="status">未选择</span></div>
+  <div id="empty" class="empty">从左侧选择一个游戏开始。</div>
+  <div id="fields" hidden>
+    <div class="selected"><div class="appicon" id="selectedIcon">◈</div><div><h2 id="appname"></h2><div class="muted" id="pkgname"></div></div></div>
+    <div class="block"><div class="sectionlabel"><h4>帧率</h4><span>Unity Native</span></div>
+    <label for="fps">目标 FPS</label><select id="fps"><option value="0">不修改帧率</option><option>30</option><option>45</option><option>60</option><option>90</option><option>120</option><option>144</option><option>165</option><option>240</option><option value="custom">自定义</option></select>
+    <div id="customFpsWrap" hidden><input id="customFps" type="number" min="30" max="240" placeholder="30–240 FPS" inputmode="numeric"></div>
+    <label class="switchline"><span><strong>解除按需渲染间隔</strong><small>仅 Unity，尝试设为 1；可能影响菜单和待机省电</small></span><input type="checkbox" id="interval"></label>
+    <label for="delay">启动延迟（秒）</label><input id="delay" type="number" min="0" max="15" value="0" inputmode="numeric">
+    </div>
+    <div class="block">
+      <div class="sectionlabel"><h4>性能与频率</h4><span>可选 · 内核原生频点</span></div>
+      <p class="hint">这是 CPU/GPU <b>最低频率锁定</b>，不是突破内核最高频率的真正超频。游戏退出自动恢复；不支持的频点会跳过。</p>
+      <label for="cpu">CPU 最低频率 (MHz)</label><input id="cpu" type="number" min="0" max="5000" step="1" placeholder="0 = 不限制" inputmode="numeric">
+      <label for="gpu">GPU 最低频率 (MHz)</label><input id="gpu" type="number" min="0" max="3000" step="1" placeholder="0 = 不限制" inputmode="numeric">
+      <div class="caps" id="caps">正在读取硬件能力…</div>
+    </div>
+    <div class="actions"><button id="save" class="primary">保存此游戏配置</button><button id="remove" class="danger">移除配置</button></div>
+    <p class="hint">更改 FPS 后须重启目标游戏以重新注入。已保存的配置跨重启保留。</p>
+  </div>
+ </section>
+ </div>
+ <footer><button id="restore" class="outline">立即恢复频率</button><span>不会写入 OEM 风驰 / GEAS / GPU 驱动上限。仅开发测试版。</span></footer>
+</main>
+<script src="./app.js" defer></script>
+</body>
+</html>
