@@ -24,3 +24,8 @@ jobs:
           sh tests/test_fengchi_probe.sh
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/fengchi_probe_test.cpp -o /tmp/fengchi_probe_test
           /tmp/fengchi_probe_test
+      - name: Verify Unity IL2CPP FPS invocation remains independent of resolution ABI
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_icall_lookup_test.cpp -o /tmp/unity_icall_lookup_test
+          /tmp/unity_icall_lookup_test
+          python3 tests/check_unity_fps_path.py
