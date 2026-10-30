@@ -27,7 +27,7 @@ public:
     void SetResolution(float);
     // Install a hook that changes *game-originated* setter calls on their original thread.
     // The hook is only armed for an explicitly enabled game.
-    bool EnableFrameRateInterceptor(int target_fps);
+    bool EnableFrameRateInterceptor(int target_fps, bool force_render_interval = false);
 
     // Legacy one-time request path; does NOT guarantee game-thread execution.
     bool SetFrameRate(int, bool);
