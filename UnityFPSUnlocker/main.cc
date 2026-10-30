@@ -30,7 +30,7 @@ static absl::flat_hash_map<std::string, ConfigValue> custom_list;
 static ConfigValue global_cfg;
 static FileWatch::Listener* file_watch_listener = nullptr;
 
-constexpr const char* ConfigFile = "/data/local/tmp/TargetList.json";
+constexpr const char* ConfigFile = "/data/adb/ufps-webui/TargetList.json";
 
 absl::Status LoadConfig() {
     custom_list.clear();
