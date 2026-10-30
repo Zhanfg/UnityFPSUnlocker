@@ -133,6 +133,7 @@ using TargetSetter = void (*)(int);
 static std::atomic<int> g_requested_fps{0};
 static std::atomic<unsigned> g_intercepted_calls{0};
 static TargetSetter g_original_setter = nullptr;
+static int (*g_target_fps_getter)() = nullptr;
 static void* g_hook_target = nullptr;
 
 // Called by the game itself, on the thread that originally invoked the
@@ -152,8 +153,14 @@ static void InterceptTargetFrameRate(int game_fps) {
     const unsigned call_index =
         g_intercepted_calls.fetch_add(1, std::memory_order_relaxed);
     if (call_index < 12) {
-        LOG("Unity setter interception call=%u game=%d override=%d forwarded=%d",
-            call_index + 1, game_fps, desired, actual_argument);
+        if (g_target_fps_getter) {
+            const int readback = g_target_fps_getter();
+            LOG("Unity setter interception call=%u game=%d override=%d forwarded=%d readback=%d",
+                call_index + 1, game_fps, desired, actual_argument, readback);
+        } else {
+            LOG("Unity setter interception call=%u game=%d override=%d forwarded=%d readback=unavailable",
+                call_index + 1, game_fps, desired, actual_argument);
+        }
     }
 }
 } // namespace
@@ -172,6 +179,7 @@ bool Unity::EnableFrameRateInterceptor(int target_fps) {
     }
     if (!g_hook_target) {
         g_requested_fps.store(target_fps, std::memory_order_relaxed);
+        g_target_fps_getter = get_targetFrameRate;
         void* trampoline = nullptr;
         const int result = DobbyHook(function_address,
             reinterpret_cast<void*>(InterceptTargetFrameRate), &trampoline);
