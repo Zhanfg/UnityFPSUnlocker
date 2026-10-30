@@ -82,10 +82,16 @@ static int frame_event(unsigned long request,int mode,int buffer) {
     return ioctl(frame_fd,request,&data);
 }
 static void restore(void) {
+    int owner=-99;
+    int still_ours=owns_pid && current_game_pid(&owner)==0 && owner==test_pid;
     if(frame_fd>=0) {
-        struct frame_data data={0};
-        int rc=ioctl(frame_fd,FRAME_STOP,&data);
-        fprintf(stderr,"cleanup_stop_rc=%d errno=%d\n",rc,rc<0?errno:0);
+        if(still_ours) {
+            struct frame_data data={0};
+            int rc=ioctl(frame_fd,FRAME_STOP,&data);
+            fprintf(stderr,"cleanup_stop_rc=%d errno=%d\n",rc,rc<0?errno:0);
+        } else {
+            fprintf(stderr,"cleanup_stop=skipped_owner_changed\n");
+        }
         close(frame_fd);
         frame_fd=-1;
     }
@@ -209,7 +215,11 @@ int main(int argc,char** argv) {
     if(access(SYNC_PATH,R_OK)!=0){printf("ERROR frame_sync_not_accessible_errno=%d\n",errno);return 74;}
     if(set_game_pid(test_pid)<0){printf("ERROR register_game_pid_errno=%d\n",errno);return 75;}
     int owner=-99;
-    if(current_game_pid(&owner)<0 || owner!=test_pid){printf("ERROR game_pid_register_mismatch=%d\n",owner);return 76;}
+    if(current_game_pid(&owner)<0 || owner!=test_pid){
+        if(current_game_pid(&owner)==0 && owner==test_pid)set_game_pid(-1);
+        printf("ERROR game_pid_register_mismatch=%d\n",owner);
+        return 76;
+    }
     owns_pid=1;
     frame_fd=open(SYNC_PATH,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
     if(frame_fd<0){printf("ERROR open_frame_sync_errno=%d\n",errno);return 77;}
