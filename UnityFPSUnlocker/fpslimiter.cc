@@ -65,6 +65,16 @@ namespace FPSLimiter {
                 LOG("Resolution scale was requested but deferred to protect Unity thread and OEM rendering");
             }
             LOG("Unity FPS interceptor armed; awaiting game setter calls (not proof of effective FPS)");
+            // No extra engine calls: only watch the atomic hit count.
+            // Late installation may miss the game's one-time initial FPS setup.
+            std::this_thread::sleep_for(std::chrono::seconds(8));
+            const unsigned hit_count = Unity::GetInstance().InterceptedFrameRateCalls();
+            if (hit_count == 0) {
+                ERROR("Unity FPS hook NO_HIT after 8s: no setter invocation observed; target is not verified");
+            } else {
+                LOG("Unity FPS hook HIT count=%u; native setter requests were intercepted (presented FPS unverified)",
+                    hit_count);
+            }
             LOG("***** finished *****");
             return;
         }
