@@ -58,23 +58,38 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH
           cmake --build .out/unity-build --target UnityFPSUnlocker --parallel 4
           test -s libs/Release/arm64-v8a.so
+      - name: Build native profile controller
+        run: |
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++" \
+            -std=c++17 -Os -Wall -Wextra -fPIE -pie -static-libstdc++ \
+            -IUnityFPSUnlocker/third/rapidjson tools/fps-profilectl.cpp \
+            -o .out/fps-profilectl
+          test -s .out/fps-profilectl
       - name: Package minimal non-invasive module
         run: |
-          mkdir -p .out/module/zygisk .out/dist
+          mkdir -p .out/module/zygisk .out/module/bin .out/dist
           cp packaging/module.prop .out/module/module.prop
           cp packaging/post-fs-data.sh .out/module/post-fs-data.sh
           cp TargetList.json .out/module/TargetList.json
           cp packaging/fengchi-probe.sh .out/module/fengchi-probe.sh
+          cp packaging/profile-ui.sh .out/module/bin/profile-ui.sh
+          cp .out/fps-profilectl .out/module/bin/fps-profilectl
+          cp packaging/perf-guard.sh .out/module/perf-guard.sh
+          cp packaging/service.sh .out/module/service.sh
+          cp -R webroot .out/module/webroot
+          test -s .out/module/webroot/index.html
+          test -s .out/module/webroot/app.js
+          test -s .out/module/webroot/style.css
           cp packaging/sf-present-fps.sh .out/module/sf-present-fps.sh
           cp packaging/fps-evidence.sh .out/module/fps-evidence.sh
           cp packaging/sf_latency_parser.awk .out/module/sf_latency_parser.awk
-          sh -n .out/module/sf-present-fps.sh .out/module/fps-evidence.sh
+          sh -n .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh
           cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
-          chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh
+          chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh .out/module/bin/fps-profilectl
           cd .out/module
-          zip -r -9 ../dist/UnityFPSUnlocker-DEV-Unverified-arm64.zip .
+          zip -r -9 ../dist/UnityFPSUnlocker-WebUI-DEV-arm64.zip .
       - uses: actions/upload-artifact@v4
         with:
-          name: UnityFPSUnlocker-DEV-Unverified-arm64
-          path: .out/dist/UnityFPSUnlocker-DEV-Unverified-arm64.zip
+          name: UnityFPSUnlocker-WebUI-DEV-arm64
+          path: .out/dist/UnityFPSUnlocker-WebUI-DEV-arm64.zip
           if-no-files-found: error
