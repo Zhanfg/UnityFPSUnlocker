@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Unlocker (UNVERIFIED DEVELOPMENT BUILD)
-version=0.3.0-dev
-versionCode=300
+name=Unity FPS Unlocker WebUI (Development)
+version=0.4.0-dev
+versionCode=400
 author=hexstr contributors; OEM-safe fork maintainers
-description=DEV ONLY. Native Unity setter interception + read-only present FPS diagnostics; real games, UE and Fengchi interpolation NOT verified.
+description=Per-game FPS, WebUI game scanner and opt-in supported CPU/GPU minimum clocks. DEV: Unity in-game unlocking and Fengchi/UE not yet verified.
