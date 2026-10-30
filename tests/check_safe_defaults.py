@@ -8,6 +8,7 @@ cfg = json.loads((root / "TargetList.json").read_text(encoding="utf-8"))
 global_cfg = cfg["global"]
 assert global_cfg["fps"] == 0, "The default must not inject into games"
 assert global_cfg["mod_opcode"] is False, "Opcode mutation must be disabled"
+assert global_cfg["render_interval"] == 0, "Managed rendering override must be opt-in"
 assert global_cfg["scale"] < 0, "Keep OEM resolution untouched by default"
 assert cfg["custom"] == {}, "Only user-selected games may be enabled"
 main = (root / "UnityFPSUnlocker/main.cc").read_text(encoding="utf-8")
