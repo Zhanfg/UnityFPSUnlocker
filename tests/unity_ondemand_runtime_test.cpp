@@ -8,6 +8,18 @@ int static_set_calls = 0;
 int image_marker = 0;
 int klass_marker = 0;
 int field_marker = 0;
+int type_marker = 0;
+int field_kind = 0x08;
+unsigned field_flags = 0x0010U;
+const void* get_field_type(void* field) {
+    return field == &field_marker ? &type_marker : nullptr;
+}
+int get_type(const void* type) {
+    return type == &type_marker ? field_kind : -1;
+}
+unsigned get_flags(void* field) {
+    return field == &field_marker ? field_flags : 0;
+}
 
 void* get_domain() { return &image_marker; }
 void* open_assembly(void*, const char* name) {
@@ -48,6 +60,9 @@ int main() {
     api.assembly_get_image = get_image;
     api.class_from_name = get_class;
     api.class_get_field_from_name = get_field;
+    api.field_get_type = get_field_type;
+    api.type_get_type = get_type;
+    api.field_get_flags = get_flags;
     api.field_static_get_value = read_field;
     api.field_static_set_value = write_field;
 
@@ -73,5 +88,30 @@ int main() {
     assert(restricted_observation.available && restricted_observation.before == 4);
     assert(restricted_observation.after == 4 && !restricted_observation.changed);
     assert(static_set_calls == 1);
+
+    // Reject a similarly named but non-int32 field before read/write.
+    field_kind = 0x12; // IL2CPP_TYPE_CLASS
+    UnityOnDemand::Runtime wrong_type;
+    wrong_type.Init(api);
+    const auto invalid_kind = wrong_type.Observe(true);
+    assert(!invalid_kind.available);
+    assert(static_set_calls == 1);
+
+    field_kind = 0x08;
+    field_flags = 0; // instance field, not a managed static
+    UnityOnDemand::Runtime wrong_flags;
+    wrong_flags.Init(api);
+    const auto invalid_flags = wrong_flags.Observe(true);
+    assert(!invalid_flags.available);
+    assert(static_set_calls == 1);
+
+    // Missing metadata accessors must disable even read-only observations.
+    UnityOnDemand::Api no_metadata = api;
+    no_metadata.field_get_flags = nullptr;
+    UnityOnDemand::Runtime missing_metadata;
+    missing_metadata.Init(no_metadata);
+    assert(!missing_metadata.Observe(false).available);
+    assert(!missing_metadata.Observe(true).available);
+
     return 0;
 }
