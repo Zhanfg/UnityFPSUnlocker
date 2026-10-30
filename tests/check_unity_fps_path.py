@@ -16,7 +16,7 @@ assert "set_targetFrameRate(framerate)" in fps_body
 assert "GetResolution" not in fps_body, "FPS setter may not call old Unity Resolution ABI"
 assert "Utility::NopFunc" not in fps_body, "Do not patch executable instructions"
 assert "GetResolution();" not in fps_body
-assert "const bool want_resolution = OemPolicy::ShouldSetResolution(cfg.scale_);" in limiter
+assert "if (OemPolicy::ShouldSetResolution(cfg.scale_))" in limiter
 assert "Unity::GetInstance().Init(handle, false)" in limiter
 assert "UnityStartup::SleepMs(elapsed)" in limiter, "Use bounded faster startup probe"
 assert "UnityStartup::StartupDelaySeconds(cfg.delay_)" in limiter, "Bound user-configured delays"
