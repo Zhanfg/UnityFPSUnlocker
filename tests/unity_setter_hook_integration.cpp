@@ -19,13 +19,21 @@ int main() {
     MockUnitySetTargetFrameRate(30);
     assert(last_set == 30);
     void* trampoline = nullptr;
-    const int installed = DobbyHook(reinterpret_cast<void*>(MockUnitySetTargetFrameRate),
+    const int prepared = DobbyPrepare(reinterpret_cast<void*>(MockUnitySetTargetFrameRate),
         reinterpret_cast<void*>(HookUnitySetTargetFrameRate), &trampoline);
-    if (installed != 0 || !trampoline) {
-        std::fprintf(stderr, "DobbyHook failed rc=%d trampoline=%p\n", installed, trampoline);
+    if (prepared != 0 || !trampoline) {
+        std::fprintf(stderr, "DobbyPrepare failed rc=%d trampoline=%p\n", prepared, trampoline);
         return 1;
     }
+    // Prepare must NOT activate the hook; it only computes the trampoline.
+    MockUnitySetTargetFrameRate(60);
+    assert(last_set == 60);
     original_setter = reinterpret_cast<void (*)(int)>(trampoline);
+    const int committed = DobbyCommit(reinterpret_cast<void*>(MockUnitySetTargetFrameRate));
+    if (committed != 0) {
+        std::fprintf(stderr, "DobbyCommit failed rc=%d\n", committed);
+        return 3;
+    }
     MockUnitySetTargetFrameRate(30);
     assert(last_set == 144);
     MockUnitySetTargetFrameRate(60);
@@ -42,6 +50,6 @@ int main() {
     }
     MockUnitySetTargetFrameRate(60);
     assert(last_set == 60);
-    std::puts("Unity native setter hook integration verified: replace, repeat, trampoline, restore");
+    std::puts("Unity native setter hook integration verified: prepare-unpatched, commit, replace, repeat, trampoline, restore");
     return 0;
 }
