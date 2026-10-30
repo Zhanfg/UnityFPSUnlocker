@@ -5,16 +5,26 @@
 #include "utility/config.hh"
 #include "utility/oem_policy.hh"
 #include "utility/logger.hh"
+#include "unity/icall_lookup.hh"
 
-void Unity::Init(void* handle) {
+bool Unity::Init(void* handle, bool resolve_resolution) {
     if ((il2cpp_resolve_icall = (il2cpp_resolve_icall_f)xdl_sym(handle, "il2cpp_resolve_icall", nullptr)) == nullptr) {
         ERROR("il2cpp_resolve_icall not found");
-        return;
+        return false;
     }
 
-    if ((set_targetFrameRate = (set_targetFrameRate_f)il2cpp_resolve_icall("UnityEngine.Application::set_targetFrameRate")) == nullptr) {
-        ERROR("set_targetFrameRate not found");
+    set_targetFrameRate = reinterpret_cast<set_targetFrameRate_f>(
+        UnityIcall::ResolveFirst(il2cpp_resolve_icall, UnityIcall::kTargetFpsSetters));
+    if (!set_targetFrameRate) {
+        ERROR("Unity FPS setter icall unavailable: cannot request FPS");
+        return false;
     }
+    get_targetFrameRate = reinterpret_cast<get_targetFrameRate_f>(
+        UnityIcall::ResolveFirst(il2cpp_resolve_icall, UnityIcall::kTargetFpsGetters));
+
+    // FPS-only operation never probes/executes Unity resolution internal calls.
+    // Resolution ABI changed across engine versions; keep this opt-in.
+    if (!resolve_resolution) return true;
 
     if ((get_currentResolution = (get_currentResolution_t)il2cpp_resolve_icall("UnityEngine.Screen::get_currentResolution_Injected")) == nullptr) {
         ERROR("get_currentResolution not found");
@@ -44,6 +54,7 @@ void Unity::Init(void* handle) {
     if ((GetSystemExtImpl_Internal = (GetSystemExtImpl_t)il2cpp_resolve_icall("UnityEngine.Display::GetSystemExtImpl")) == nullptr) {
         ERROR("GetSystemExtImpl not found");
     }
+    return true;
 }
 
 Resolution Unity::GetSystemExtImpl() {
@@ -85,23 +96,26 @@ void Unity::SetResolution(float scale) {
     }
 }
 
-void Unity::SetFrameRate(int framerate, bool mod_opcode) {
-    Resolution resolution = GetResolution();
-    if (set_targetFrameRate) {
-        set_targetFrameRate(framerate);
-        LOG("Current resolution: %dx%d @%d", resolution.m_Width, resolution.m_Height, resolution.m_RefreshRate);
-        if (framerate > resolution.m_RefreshRate) {
-            ERROR("The screen refresh rate is lower than target framerate! %d < %d", resolution.m_RefreshRate, framerate);
-        }
-
-        if (mod_opcode) {
-            auto ptr = reinterpret_cast<uint32_t*>(set_targetFrameRate);
-            auto opcode = ptr[0];
-            if ((opcode & 0xFC000000) == 0x14000000) {
-                auto offset = (int32_t)(opcode << 8) >> 6;
-                ptr = reinterpret_cast<uint32_t*>(reinterpret_cast<intptr_t>(set_targetFrameRate) + offset);
-            }
-            Utility::NopFunc(reinterpret_cast<unsigned char*>(ptr));
-        }
+bool Unity::SetFrameRate(int framerate, bool mod_opcode) {
+    if (!set_targetFrameRate || framerate < 30 || framerate > 240) {
+        ERROR("Unity FPS request rejected: setter unavailable or invalid FPS %d", framerate);
+        return false;
     }
+    if (mod_opcode) {
+        LOG("Opcode patching is disabled to preserve game and OEM rendering");
+    }
+    // This call issues a Unity engine request. It does not prove the actual
+    // rendered FPS, screen Hz, nor OEM-generated frame interpolation.
+    set_targetFrameRate(framerate);
+    LOG("Unity native FPS request submitted: %d", framerate);
+    if (get_targetFrameRate) {
+        const int reported = get_targetFrameRate();
+        LOG("Unity native FPS getter reads back %d after request %d", reported, framerate);
+        if (reported != framerate) {
+            ERROR("Unity FPS request not retained at readback: requested=%d reported=%d", framerate, reported);
+        }
+    } else {
+        LOG("Unity FPS getter unavailable; only setter call can be verified");
+    }
+    return true;
 }
