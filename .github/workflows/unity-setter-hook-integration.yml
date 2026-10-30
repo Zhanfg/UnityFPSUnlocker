@@ -23,7 +23,7 @@ jobs:
       - name: Build Dobby host static backend
         run: |
           cmake -S .out/dobby-host-src -B .out/dobby-host-build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release -DDOBBY_DEBUG=OFF \
+            -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DCMAKE_BUILD_TYPE=Release -DDOBBY_DEBUG=OFF \
             -DDOBBY_GENERATE_SHARED=OFF -DDynamicBinaryInstrument=OFF \
             -DPlugin.SymbolResolver=OFF -DPlugin.GlobalOffsetTableHook=OFF
           cmake --build .out/dobby-host-build --target dobby --parallel 4
