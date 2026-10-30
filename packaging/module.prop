@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Unlocker - Fengchi Universal
-version=0.2.0-alpha2
-versionCode=2
+name=Unity FPS Unlocker (UNVERIFIED DEVELOPMENT BUILD)
+version=0.3.0-dev
+versionCode=300
 author=hexstr contributors; OEM-safe fork maintainers
-description=Model-independent opt-in Unity FPS control with read-only Fengchi capability probes; preserves OEM superframe/super-resolution.
+description=DEV ONLY. Native Unity setter interception + read-only present FPS diagnostics; real games, UE and Fengchi interpolation NOT verified.
