@@ -28,4 +28,6 @@ jobs:
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_icall_lookup_test.cpp -o /tmp/unity_icall_lookup_test
           /tmp/unity_icall_lookup_test
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_fps_interceptor_test.cpp -o /tmp/unity_fps_interceptor_test
+          /tmp/unity_fps_interceptor_test
           python3 tests/check_unity_fps_path.py
