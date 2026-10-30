@@ -27,7 +27,7 @@ namespace FPSLimiter {
 
         LOG("***** begin *****");
         void* handle = nullptr;
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 30; ++i) {
             if ((handle = xdl_open("libil2cpp.so", 0))) {
                 break;
             }
@@ -40,7 +40,7 @@ namespace FPSLimiter {
             // executable pages or modifying the OEM scheduling stack.
             bool ready = false;
             for (int attempt = 0; attempt < 12; ++attempt) {
-                if (Unity::GetInstance().Init(handle, want_resolution)) {
+                if (Unity::GetInstance().Init(handle, false)) {
                     ready = true;
                     break;
                 }
