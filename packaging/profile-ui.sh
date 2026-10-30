@@ -34,7 +34,15 @@ case "$ACTION" in
       case "$pkg" in
         *game*|*unity*|*unreal*|com.miHoYo.*|com.HoYoverse.*|com.tencent.tmgp.*|com.netease.*|com.roblox.*|com.supercell.*)
           printf 'GAME|%s\n' "$pkg";;
-        *) printf 'APP|%s\n' "$pkg";;
+        *)
+          # CATEGORY_GAME=0 in Android ApplicationInfo. OEM dumpsys output
+          # varies; absence is unknown, so still expose the app for selection.
+          if dumpsys package "$pkg" 2>/dev/null | grep -Eq 'category=0([^0-9]|$)|category: GAME|android.intent.category.GAME';then
+            printf 'GAME|%s\n' "$pkg"
+          else
+            printf 'APP|%s\n' "$pkg"
+          fi;;
+
       esac
     done
     ;;
