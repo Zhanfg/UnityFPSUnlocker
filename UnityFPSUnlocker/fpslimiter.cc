@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "unity/unity_engine.hh"
+#include "utility/oem_policy.hh"
 #include "utility/logger.hh"
 
 #include <xdl.h>
@@ -33,13 +34,22 @@ namespace FPSLimiter {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
         if (handle) {
-            Unity::GetInstance().Init(handle);
+            const bool want_resolution = OemPolicy::ShouldSetResolution(cfg.scale_);
+            if (!Unity::GetInstance().Init(handle, want_resolution)) {
+                ERROR("Unity FPS initialization failed: no FPS request performed");
+                return;
+            }
             if (cfg.mod_opcode_) {
                 LOG("OEM-safe build: opcode modification was requested but is disabled");
             }
-            Unity::GetInstance().SetFrameRate(cfg.fps_, false);
-            Unity::GetInstance().SetResolution(cfg.scale_);
-
+            if (!Unity::GetInstance().SetFrameRate(cfg.fps_, false)) {
+                ERROR("Unity native FPS request failed");
+                return;
+            }
+            if (want_resolution) {
+                Unity::GetInstance().SetResolution(cfg.scale_);
+            }
+            LOG("Unity FPS setter invoked (effective frame rate still unverified)");
             LOG("***** finished *****");
             return;
         }
