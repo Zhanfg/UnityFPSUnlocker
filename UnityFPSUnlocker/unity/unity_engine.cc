@@ -206,6 +206,14 @@ static void InterceptTargetFrameRate(int game_fps) {
 } // namespace
 #endif
 
+unsigned Unity::InterceptedFrameRateCalls() const {
+#if defined(__aarch64__)
+    return g_intercepted_calls.load(std::memory_order_relaxed);
+#else
+    return 0;
+#endif
+}
+
 bool Unity::EnableFrameRateInterceptor(int target_fps, bool force_render_interval) {
     if (!UnityFramePolicy::ValidTarget(target_fps) || !set_targetFrameRate) {
         ERROR("Unity setter hook rejected: missing setter or target=%d", target_fps);
