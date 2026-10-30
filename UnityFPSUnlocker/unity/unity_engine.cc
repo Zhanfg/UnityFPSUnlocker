@@ -6,6 +6,13 @@
 #include "utility/oem_policy.hh"
 #include "utility/logger.hh"
 #include "unity/icall_lookup.hh"
+#include "unity/fps_interceptor_core.hh"
+
+#include <atomic>
+
+#if defined(__aarch64__)
+#include <dobby.h>
+#endif
 
 bool Unity::Init(void* handle, bool resolve_resolution) {
     if ((il2cpp_resolve_icall = (il2cpp_resolve_icall_f)xdl_sym(handle, "il2cpp_resolve_icall", nullptr)) == nullptr) {
@@ -118,4 +125,71 @@ bool Unity::SetFrameRate(int framerate, bool mod_opcode) {
         LOG("Unity FPS getter unavailable; only setter call can be verified");
     }
     return true;
+}
+
+#if defined(__aarch64__)
+namespace {
+using TargetSetter = void (*)(int);
+static std::atomic<int> g_requested_fps{0};
+static std::atomic<unsigned> g_intercepted_calls{0};
+static TargetSetter g_original_setter = nullptr;
+static void* g_hook_target = nullptr;
+
+// Called by the game itself, on the thread that originally invoked the
+// Unity Application.targetFrameRate native setter. No synthetic Unity API
+// calls from a Zygisk worker thread, busy loop, polling or timer.
+static void InterceptTargetFrameRate(int game_fps) {
+    const TargetSetter original = g_original_setter;
+    if (!original) {
+        // The tiny hook-installation window can race with an app setter call.
+        // Avoid recursion or calling an uninitialized trampoline.
+        ERROR("Unity setter hook trampoline not ready; skipped one setter");
+        return;
+    }
+    const int desired = g_requested_fps.load(std::memory_order_relaxed);
+    const int actual_argument = UnityFramePolicy::Apply(game_fps, desired);
+    original(actual_argument);
+    const unsigned call_index =
+        g_intercepted_calls.fetch_add(1, std::memory_order_relaxed);
+    if (call_index < 12) {
+        LOG("Unity setter interception call=%u game=%d override=%d forwarded=%d",
+            call_index + 1, game_fps, desired, actual_argument);
+    }
+}
+} // namespace
+#endif
+
+bool Unity::EnableFrameRateInterceptor(int target_fps) {
+    if (!UnityFramePolicy::ValidTarget(target_fps) || !set_targetFrameRate) {
+        ERROR("Unity setter hook rejected: missing setter or target=%d", target_fps);
+        return false;
+    }
+#if defined(__aarch64__)
+    void* function_address = reinterpret_cast<void*>(set_targetFrameRate);
+    if (g_hook_target && g_hook_target != function_address) {
+        ERROR("Unity setter hook already installed for a different address");
+        return false;
+    }
+    if (!g_hook_target) {
+        g_requested_fps.store(target_fps, std::memory_order_relaxed);
+        void* trampoline = nullptr;
+        const int result = DobbyHook(function_address,
+            reinterpret_cast<void*>(InterceptTargetFrameRate), &trampoline);
+        if (result != 0 || trampoline == nullptr) {
+            ERROR("DobbyHook Unity setter failed: rc=%d trampoline=%p", result, trampoline);
+            g_requested_fps.store(0, std::memory_order_relaxed);
+            return false;
+        }
+        g_original_setter = reinterpret_cast<TargetSetter>(trampoline);
+        g_hook_target = function_address;
+        LOG("Unity setter hook armed: target=%d (waiting for game setter call)", target_fps);
+    } else {
+        g_requested_fps.store(target_fps, std::memory_order_release);
+        LOG("Unity setter hook updated target=%d", target_fps);
+    }
+    return true;
+#else
+    ERROR("Unity setter hook only implemented and compiled for ARM64");
+    return false;
+#endif
 }
