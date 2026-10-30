@@ -34,7 +34,9 @@ static int readfile(const char *path,char *out,size_t cap) {
     int fd=open(path,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
     if(fd<0)return -1;
     ssize_t n=read(fd,out,cap-1);int err=errno;close(fd);errno=err;
-    if(n<0)return -1;out[n]='\0';return 0;
+    if(n<0) return -1;
+    out[n]='\0';
+    return 0;
 }
 static int game_pid(int *p) {
     char b[128];if(readfile(PIDPATH,b,sizeof(b))<0)return -1;
