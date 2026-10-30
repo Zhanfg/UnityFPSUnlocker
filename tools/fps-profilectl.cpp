@@ -12,7 +12,10 @@
 #include <sys/stat.h>
 
 using namespace rapidjson;
-static constexpr const char* PATH="/data/local/tmp/TargetList.json";
+#ifndef FPS_PROFILE_CONFIG_PATH
+#define FPS_PROFILE_CONFIG_PATH "/data/local/tmp/TargetList.json"
+#endif
+static constexpr const char* PATH=FPS_PROFILE_CONFIG_PATH;
 static bool validpkg(const std::string& s) {
     if(s.size()<3 || s.size()>220 || s.find('.')==std::string::npos || s[0]=='.')return false;
     for(char c:s)if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='_'||c=='.'))return false;
@@ -51,9 +54,8 @@ static bool load(Document& d) {
 static bool write_doc(const Document& d){
     StringBuffer output;Writer<StringBuffer> writer(output);
     if(!d.Accept(writer)||output.GetSize()>1024*1024)return false;
-    const char* temp="/data/local/tmp/.TargetList.webui.XXXXXX";
-    char path[sizeof("/data/local/tmp/.TargetList.webui.XXXXXX")];
-    std::strcpy(path,temp);
+    std::string template_path = std::string(PATH) + ".webui.XXXXXX";
+    char* path = &template_path[0];
     int fd=mkstemp(path);
     if(fd<0)return false;
     fchmod(fd,0600);
@@ -94,7 +96,7 @@ int main(int argc,char**argv) {
         for(auto it=v.MemberBegin();it!=v.MemberEnd();++it){
             if(!it->value.IsObject()||!validpkg(it->name.GetString()))continue;
             const int cpu=integer(it->value,"cpu_min_khz");
-            const int gpu=integer(it->value,"gpu_min_hz");
+            const int gpu=integer(it->value,"gpu_min_mhz");
             if(cpu>0||gpu>0)printf("%s %d %d\n",it->name.GetString(),cpu,gpu);
         }
         return 0;
@@ -111,12 +113,12 @@ int main(int argc,char**argv) {
         if(!number(argv[3],0,240,fps)|| (fps!=0&&fps<30) ||
            !number(argv[4],0,1,interval)||
            !number(argv[5],0,5000000,cpu)||
-           !number(argv[6],0,300000000,gpu)||
+           !number(argv[6],0,3000,gpu)||
            !number(argv[7],0,15,delay)){
-            fprintf(stderr,"Invalid FPS / interval / CPU-kHz / GPU-kHz / delay\n");return 65;
+            fprintf(stderr,"Invalid FPS / interval / CPU-kHz / GPU-MHz / delay\n");return 65;
         }
         if(cpu!=0&&cpu<100000)return 65;
-        if(gpu!=0&&gpu<10000)return 65;
+        if(gpu!=0&&gpu<100)return 65;
         if(it==custom.MemberEnd()){
             Value key(pkg.c_str(),d.GetAllocator());Value obj(kObjectType);
             custom.AddMember(key,obj,d.GetAllocator());it=custom.FindMember(pkg.c_str());
@@ -126,7 +128,7 @@ int main(int argc,char**argv) {
         auto& a=d.GetAllocator();
         put(obj,"fps",fps,a);put(obj,"delay",delay,a);
         put(obj,"render_interval",interval,a);
-        put(obj,"cpu_min_khz",cpu,a);put(obj,"gpu_min_khz",gpu,a);
+        put(obj,"cpu_min_khz",cpu,a);put(obj,"gpu_min_mhz",gpu,a);
         putbool(obj,"mod_opcode",false,a);putscale(obj,a);
     }
     if(!write_doc(d)){perror("Cannot atomically save config");return 74;}
