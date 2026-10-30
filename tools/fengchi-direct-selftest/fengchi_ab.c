@@ -176,7 +176,7 @@ static int run_phase(FILE* out,const char* phase,int emit,int fps,int sec,int bu
     }
     sample(out,phase,samples++,frames,failed);
     fprintf(stderr,"phase=%s mode=%s frames=%d failures=%d duration_ms=%" PRId64 "\n",
-        phase,emit?"ioctl":"control",frames,failed,(now_ns()-start)/1000000LL);
+        phase,emit?"ioctl":"control",frames,failed,(int64_t)((now_ns()-start)/1000000LL));
     return failed==0 && running ? 0:-1;
 }
 int main(int argc,char** argv) {
