@@ -45,7 +45,10 @@ static void ensure(Document& d) {
 }
 static bool load(Document& d) {
     FILE* f=fopen(PATH,"rb");
-    if(!f){ensure(d);return true;}
+    if(!f){
+        if(errno!=ENOENT)return false;
+        ensure(d);return true;
+    }
     char buffer[16384];FileReadStream stream(f,buffer,sizeof(buffer));
     d.ParseStream(stream);fclose(f);
     if(d.HasParseError()||!d.IsObject())return false;
