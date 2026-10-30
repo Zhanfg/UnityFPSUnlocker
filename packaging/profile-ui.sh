@@ -7,10 +7,10 @@ ACTION=${1:-}
 case "$ACTION" in
   read) exec "$CLI" read ;;
   set)
-    [ $# -eq 8 ] || exit 64
+    [ $# -eq 7 ] || exit 64
     exec "$CLI" set "$2" "$3" "$4" "$5" "$6" "$7" ;;
   remove)
-    [ $# -eq 3 ] || exit 64
+    [ $# -eq 2 ] || exit 64
     exec "$CLI" remove "$2" ;;
   caps)
     for policy in /sys/devices/system/cpu/cpufreq/policy[0-9]*;do
@@ -39,6 +39,9 @@ case "$ACTION" in
     done
     ;;
   runtime) exec "$CLI" runtime ;;
+  restore)
+    sh "$MODDIR/../perf-guard.sh" restore || exit 75
+    echo OK;;
   *)
     echo "Usage: profile-ui.sh read|scan|caps|set PKG FPS INTERVAL CPU_KHZ GPU_MHZ DELAY|remove PKG" >&2
     exit 64 ;;
