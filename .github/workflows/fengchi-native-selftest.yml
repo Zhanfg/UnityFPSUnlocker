@@ -41,6 +41,20 @@ jobs:
           test -s out/fengchi_selftest_arm64
           test -s out/fengchi_ab_arm64
           test -s out/fengchi_ed_arm64
+      - name: Assemble and inspect KernelSU/Magisk flashable module
+        run: |
+          set -eu
+          mkdir -p out/flashable/bin out/dist
+          cp -a tools/fengchi-module/. out/flashable/
+          cp out/fengchi_ab_arm64 out/flashable/bin/fengchi_ab_arm64
+          cp out/fengchi_ed_arm64 out/flashable/bin/fengchi_ed_arm64
+          chmod 0755 out/flashable/action.sh out/flashable/bin/fengchi out/flashable/bin/fengchi_ab_arm64 out/flashable/bin/fengchi_ed_arm64
+          sh -n out/flashable/action.sh out/flashable/bin/fengchi out/flashable/customize.sh
+          test "$(grep '^id=' out/flashable/module.prop)" = "id=fengchi_direct_lab"
+          (cd out/flashable && zip -qr9 ../dist/Fengchi_Direct_Lab_v0.3.0-alpha1_arm64.zip .)
+          unzip -t out/dist/Fengchi_Direct_Lab_v0.3.0-alpha1_arm64.zip
+          unzip -l out/dist/Fengchi_Direct_Lab_v0.3.0-alpha1_arm64.zip
+          sha256sum out/dist/Fengchi_Direct_Lab_v0.3.0-alpha1_arm64.zip
       - uses: actions/upload-artifact@v4
         with:
           name: fengchi-selftest-arm64
@@ -48,4 +62,5 @@ jobs:
             out/fengchi_selftest_arm64
             out/fengchi_ab_arm64
             out/fengchi_ed_arm64
+            out/dist/Fengchi_Direct_Lab_v0.3.0-alpha1_arm64.zip
           if-no-files-found: error
