@@ -7,12 +7,17 @@
 #include "utility/logger.hh"
 #include "unity/icall_lookup.hh"
 #include "unity/fps_interceptor_core.hh"
+#include "unity/ondemand_runtime.hh"
 
 #include <atomic>
 
 #if defined(__aarch64__)
 #include <dobby.h>
 #endif
+
+namespace {
+UnityOnDemand::Runtime g_ondemand_runtime;
+} // namespace
 
 bool Unity::Init(void* handle, bool resolve_resolution) {
     if ((il2cpp_resolve_icall = (il2cpp_resolve_icall_f)xdl_sym(handle, "il2cpp_resolve_icall", nullptr)) == nullptr) {
@@ -28,6 +33,25 @@ bool Unity::Init(void* handle, bool resolve_resolution) {
     }
     get_targetFrameRate = reinterpret_cast<get_targetFrameRate_f>(
         UnityIcall::ResolveFirst(il2cpp_resolve_icall, UnityIcall::kTargetFpsGetters));
+
+    // Resolve functions only: actual IL2CPP runtime metadata and field reads
+    // happen later, on the original game's setter invocation thread.
+    UnityOnDemand::Api ondemand_api{};
+    ondemand_api.domain_get = reinterpret_cast<decltype(ondemand_api.domain_get)>(
+        xdl_sym(handle, "il2cpp_domain_get", nullptr));
+    ondemand_api.domain_assembly_open = reinterpret_cast<decltype(ondemand_api.domain_assembly_open)>(
+        xdl_sym(handle, "il2cpp_domain_assembly_open", nullptr));
+    ondemand_api.assembly_get_image = reinterpret_cast<decltype(ondemand_api.assembly_get_image)>(
+        xdl_sym(handle, "il2cpp_assembly_get_image", nullptr));
+    ondemand_api.class_from_name = reinterpret_cast<decltype(ondemand_api.class_from_name)>(
+        xdl_sym(handle, "il2cpp_class_from_name", nullptr));
+    ondemand_api.class_get_field_from_name = reinterpret_cast<decltype(ondemand_api.class_get_field_from_name)>(
+        xdl_sym(handle, "il2cpp_class_get_field_from_name", nullptr));
+    ondemand_api.field_static_get_value = reinterpret_cast<decltype(ondemand_api.field_static_get_value)>(
+        xdl_sym(handle, "il2cpp_field_static_get_value", nullptr));
+    ondemand_api.field_static_set_value = reinterpret_cast<decltype(ondemand_api.field_static_set_value)>(
+        xdl_sym(handle, "il2cpp_field_static_set_value", nullptr));
+    g_ondemand_runtime.Init(ondemand_api);
 
     // FPS-only operation never probes/executes Unity resolution internal calls.
     // Resolution ABI changed across engine versions; keep this opt-in.
@@ -132,6 +156,7 @@ namespace {
 using TargetSetter = void (*)(int);
 static std::atomic<int> g_requested_fps{0};
 static std::atomic<unsigned> g_intercepted_calls{0};
+static std::atomic<bool> g_force_ondemand{false};
 static TargetSetter g_original_setter = nullptr;
 static int (*g_target_fps_getter)() = nullptr;
 static void* g_hook_target = nullptr;
@@ -150,8 +175,17 @@ static void InterceptTargetFrameRate(int game_fps) {
     const int desired = g_requested_fps.load(std::memory_order_relaxed);
     const int actual_argument = UnityFramePolicy::Apply(game_fps, desired);
     original(actual_argument);
+    // OnDemandRendering is a managed static field (not an IL2CPP icall).
+    // Inspect it on this original game thread. Only opt-in per-game config
+    // may change the interval, and never before calling the original setter.
+    const bool force_interval = g_force_ondemand.load(std::memory_order_relaxed);
+    const auto interval = g_ondemand_runtime.Observe(force_interval);
     const unsigned call_index =
         g_intercepted_calls.fetch_add(1, std::memory_order_relaxed);
+    if (call_index < 12 || interval.changed) {
+        LOG("Unity OnDemandRendering available=%d interval=%d->%d force=%d",
+            interval.available, interval.before, interval.after, force_interval);
+    }
     if (call_index < 12) {
         if (g_target_fps_getter) {
             const int readback = g_target_fps_getter();
@@ -166,7 +200,7 @@ static void InterceptTargetFrameRate(int game_fps) {
 } // namespace
 #endif
 
-bool Unity::EnableFrameRateInterceptor(int target_fps) {
+bool Unity::EnableFrameRateInterceptor(int target_fps, bool force_render_interval) {
     if (!UnityFramePolicy::ValidTarget(target_fps) || !set_targetFrameRate) {
         ERROR("Unity setter hook rejected: missing setter or target=%d", target_fps);
         return false;
@@ -179,6 +213,7 @@ bool Unity::EnableFrameRateInterceptor(int target_fps) {
     }
     if (!g_hook_target) {
         g_requested_fps.store(target_fps, std::memory_order_relaxed);
+        g_force_ondemand.store(force_render_interval, std::memory_order_relaxed);
         g_target_fps_getter = get_targetFrameRate;
         // DobbyHook() performs Prepare+Commit in one call, opening a race:
         // a game setter can hit the replacement before origin_call is assigned.
@@ -211,7 +246,8 @@ bool Unity::EnableFrameRateInterceptor(int target_fps) {
         LOG("Unity setter hook armed: target=%d (awaiting actual game setter calls)", target_fps);
     } else {
         g_requested_fps.store(target_fps, std::memory_order_release);
-        LOG("Unity setter hook updated target=%d", target_fps);
+        g_force_ondemand.store(force_render_interval, std::memory_order_release);
+        LOG("Unity setter hook updated target=%d force_ondemand=%d", target_fps, force_render_interval);
     }
     return true;
 #else
