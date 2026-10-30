@@ -180,17 +180,35 @@ bool Unity::EnableFrameRateInterceptor(int target_fps) {
     if (!g_hook_target) {
         g_requested_fps.store(target_fps, std::memory_order_relaxed);
         g_target_fps_getter = get_targetFrameRate;
+        // DobbyHook() performs Prepare+Commit in one call, opening a race:
+        // a game setter can hit the replacement before origin_call is assigned.
+        // Use the upstream two-phase API to publish the trampoline FIRST.
         void* trampoline = nullptr;
-        const int result = DobbyHook(function_address,
+        const int prepared = DobbyPrepare(function_address,
             reinterpret_cast<void*>(InterceptTargetFrameRate), &trampoline);
-        if (result != 0 || trampoline == nullptr) {
-            ERROR("DobbyHook Unity setter failed: rc=%d trampoline=%p", result, trampoline);
+        if (prepared != 0 || trampoline == nullptr) {
+            ERROR("DobbyPrepare Unity setter failed: rc=%d trampoline=%p", prepared, trampoline);
             g_requested_fps.store(0, std::memory_order_relaxed);
             return false;
         }
         g_original_setter = reinterpret_cast<TargetSetter>(trampoline);
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+        const int committed = DobbyCommit(function_address);
+        if (committed != 0) {
+            ERROR("DobbyCommit Unity setter failed: rc=%d; attempting teardown", committed);
+            // Unlike failure to prepare, this may have partially patched the
+            // function. Attempt to restore it before resetting our trampoline.
+            const int destroyed = DobbyDestroy(function_address);
+            if (destroyed != 0) {
+                ERROR("DobbyDestroy failed after commit error: rc=%d; preserving trampoline", destroyed);
+                return false;
+            }
+            g_original_setter = nullptr;
+            g_requested_fps.store(0, std::memory_order_release);
+            return false;
+        }
         g_hook_target = function_address;
-        LOG("Unity setter hook armed: target=%d (waiting for game setter call)", target_fps);
+        LOG("Unity setter hook armed: target=%d (awaiting actual game setter calls)", target_fps);
     } else {
         g_requested_fps.store(target_fps, std::memory_order_release);
         LOG("Unity setter hook updated target=%d", target_fps);
