@@ -31,6 +31,23 @@ jobs:
           git fetch --depth=1 origin 5dfc8546954ce3b3198132ab13fddb89ee92cdd7
           git checkout --detach 5dfc8546954ce3b3198132ab13fddb89ee92cdd7
           test "$(git rev-parse HEAD)" = "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"
+          # Upstream Dobby ARM64 closure asm uses Mach-O @PAGE syntax
+          # even when compiling Android/ELF. Use a GOT load on Android.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
+          src = path.read_text()
+          old = ("adrp TMP_REG_0, cdecl(common_closure_bridge_handler)@PAGE\n"
+                 "add TMP_REG_0, TMP_REG_0, cdecl(common_closure_bridge_handler)@PAGEOFF")
+          new = ("#if defined(__APPLE__)\n"
+                 + old +
+                 "\n#else\n"
+                 "adrp TMP_REG_0, :got:common_closure_bridge_handler\n"
+                 "ldr TMP_REG_0, [TMP_REG_0, :got_lo12:common_closure_bridge_handler]\n"
+                 "#endif")
+          assert old in src
+          path.write_text(src.replace(old, new, 1))
+          PY
       - name: Build Android Abseil
         run: |
           cmake -S .out/abseil-source -B .out/abseil-build -G Ninja \
