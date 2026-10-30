@@ -1,11 +1,11 @@
 #!/system/bin/sh
 # Fengchi Direct Lab v0.3.0-alpha1 - no boot service.
 umask 077
-SELF_DIR=\${0%/*}
-MODDIR=\${SELF_DIR%/*}
-CMD=\${1:-status}
-FPS=\${2:-60}
-SECONDS=\${3:-3}
+SELF_DIR=${0%/*}
+MODDIR=${SELF_DIR%/*}
+CMD=${1:-status}
+FPS=${2:-60}
+SECONDS=${3:-3}
 G=/proc/game_opt/game_pid
 ED=/proc/game_opt/early_detect
 FRAME=/proc/game_opt/frame_sync/sync_ctrl
@@ -32,7 +32,7 @@ snapshot() {
     done
     for c in 0 1 2 3 4 5 6 7; do
       p="/sys/devices/system/cpu/cpu$c/cpufreq/scaling_cur_freq"
-      echo "cpu\${c}_khz=$(read_value "$p")"
+      echo "cpu${c}_khz=$(read_value "$p")"
     done
     echo "gpu_hz=$(read_value /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq)"
   } > "$2"
@@ -99,7 +99,7 @@ if [ "$MODE" = ab ]; then EXE="$MODDIR/bin/fengchi_ab_arm64"; else EXE="$MODDIR/
 [ -x "$EXE" ] || { echo "ERROR: missing executable $EXE"; exit 70; }
 TS=$(date +%Y%m%d_%H%M%S 2>/dev/null)
 [ -n "$TS" ] || TS=$(date +%s)
-WORK="/data/local/tmp/FengchiLab_\${MODE}_\${TS}_$$"
+WORK="/data/local/tmp/FengchiLab_${MODE}_${TS}_$$"
 mkdir -p "$WORK" || exit 70
 snapshot before "$WORK/before.txt"
 printf 'mode=%s fps=%s duration=%s\n' "$MODE" "$FPS" "$SECONDS" > "$WORK/metadata.txt"
@@ -115,7 +115,7 @@ RC=$?
 rescue
 snapshot after "$WORK/after.txt"
 printf 'exit_code=%s\nnative_process_pid=%s\n' "$RC" "$CHILD_PID" >> "$WORK/metadata.txt"
-NAME="FengchiLab_\${MODE}_\${TS}_$$"
+NAME="FengchiLab_${MODE}_${TS}_$$"
 ARCHIVE="$OUTBASE/$NAME.tar.gz"
 if tar -czf "$ARCHIVE" -C "$WORK" . 2>/dev/null; then
   echo "Archive: $ARCHIVE"
