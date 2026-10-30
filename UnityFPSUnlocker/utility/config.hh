@@ -18,18 +18,21 @@ public:
     int fps_ = 0;
     bool mod_opcode_ = false;
     float scale_ = -1;
+    bool render_interval_ = false;
 
     ConfigValue(){};
-    ConfigValue(int delay, int fps, bool mod_opcode, float scale)
+    ConfigValue(int delay, int fps, bool mod_opcode, float scale, bool render_interval = false)
         : delay_(delay),
           fps_(fps),
           mod_opcode_(mod_opcode),
-          scale_(scale){};
+          scale_(scale),
+          render_interval_(render_interval){};
     ConfigValue(const ConfigValue& lhs) {
         delay_ = lhs.delay_;
         fps_ = lhs.fps_;
         mod_opcode_ = lhs.mod_opcode_;
         scale_ = lhs.scale_;
+        render_interval_ = lhs.render_interval_;
     }
 
     void DebugPrint() const {
