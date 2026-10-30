@@ -1,0 +1,128 @@
+#!/system/bin/sh
+# Fengchi Direct Lab v0.3.0-alpha1 - no boot service.
+umask 077
+SELF_DIR=\${0%/*}
+MODDIR=\${SELF_DIR%/*}
+CMD=\${1:-status}
+FPS=\${2:-60}
+SECONDS=\${3:-3}
+G=/proc/game_opt/game_pid
+ED=/proc/game_opt/early_detect
+FRAME=/proc/game_opt/frame_sync/sync_ctrl
+NATIVE_PID=
+MODE=
+WORK=
+OUTBASE=/sdcard/Download
+[ -d "$OUTBASE" ] && [ -w "$OUTBASE" ] || OUTBASE=/data/local/tmp
+read_value() { [ -r "$1" ] && cat "$1" 2>/dev/null || echo unavailable; }
+owner_pid() { [ -r "$G" ] && sed -n 's/^game_pid=\([-0-9]*\).*/\1/p' "$G" 2>/dev/null; }
+snapshot() {
+  {
+    echo "snapshot=$1"
+    date 2>/dev/null
+    echo "kernel=$(uname -r)"
+    for p in "$G" "$ED/target_fps" "$ED/ed_enable" "$ED/ed_args" \
+      /proc/game_opt/frame_load_track/flt_enable \
+      /proc/game_opt/task_boost/ct_enable \
+      /proc/hmbird_sched/scx_enable \
+      /proc/hmbird_sched/slim_walt/frame_per_sec \
+      /proc/game_opt/cpu_min_freq /proc/game_opt/cpu_max_freq; do
+      echo "[$p]"
+      read_value "$p"
+    done
+    for c in 0 1 2 3 4 5 6 7; do
+      p="/sys/devices/system/cpu/cpu$c/cpufreq/scaling_cur_freq"
+      echo "cpu\${c}_khz=$(read_value "$p")"
+    done
+    echo "gpu_hz=$(read_value /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq)"
+  } > "$2"
+}
+rescue() {
+  [ -n "$NATIVE_PID" ] || return 0
+  if [ -r "/proc/$NATIVE_PID/comm" ]; then
+    cname=$(cat "/proc/$NATIVE_PID/comm" 2>/dev/null)
+    case "$cname" in fengchi-ab|fengchi-ed-test) kill -TERM "$NATIVE_PID" 2>/dev/null || true;; esac
+  fi
+  wait "$NATIVE_PID" 2>/dev/null || true
+  current=$(owner_pid)
+  if [ "$current" = "$NATIVE_PID" ] && [ ! -d "/proc/$NATIVE_PID" ]; then
+    if [ "$MODE" = early ]; then
+      if [ "$(read_value "$ED/ed_enable")" = 1 ]; then
+        echo 0 > "$ED/ed_enable" 2>/dev/null
+        echo "watchdog_restore_ed_enable=0" >> "$WORK/native.txt"
+      fi
+      if [ -r "$ED/ed_args" ] && grep -q 'fst_offset=10, flt_offset=30' "$ED/ed_args" 2>/dev/null; then
+        echo -1 > "$ED/ed_args" 2>/dev/null
+        echo "watchdog_restore_ed_args=defaults" >> "$WORK/native.txt"
+      fi
+      if [ "$(read_value "$ED/target_fps")" = "$FPS" ]; then
+        echo 0 > "$ED/target_fps" 2>/dev/null
+        echo "watchdog_restore_target_fps=0" >> "$WORK/native.txt"
+      fi
+    fi
+    echo -1 > "$G" 2>/dev/null
+    echo "watchdog_restore_game_pid=-1" >> "$WORK/native.txt"
+  fi
+  NATIVE_PID=
+}
+on_interrupt() { echo "Interrupted: attempting cleanup"; rescue; exit 130; }
+trap on_interrupt 1 2 15
+usage() {
+  echo "Fengchi Direct Lab v0.3.0-alpha1"
+  echo "Usage: sh $0 status | ab [fps] [seconds] | early [fps] [seconds]"
+  echo "status: read-only; ab: Frame Sync matched comparison; early: opt-in Early Detect experiment"
+}
+case "$CMD" in
+ status|info)
+   usage
+   for p in "$G" "$FRAME" "$ED/target_fps" "$ED/ed_enable" "$ED/ed_args" \
+     /proc/game_opt/frame_load_track/flt_enable /proc/game_opt/geas_ctrl /proc/hmbird_sched; do
+     [ -e "$p" ] && echo "$p=present" || echo "$p=absent"
+   done
+   echo "current_game_pid=$(owner_pid)"
+   echo "ed_enable=$(read_value "$ED/ed_enable")"
+   echo "target_fps=$(read_value "$ED/target_fps")"
+   echo "ed_args=$(read_value "$ED/ed_args")"
+   exit 0;;
+ ab) MODE=ab; MINFPS=20;;
+ early) MODE=early; MINFPS=30;;
+ *) usage; exit 64;;
+esac
+case "$FPS:$SECONDS" in *[!0-9:]*|:*|*:) echo "ERROR: integer FPS and seconds required"; exit 64;; esac
+[ "$FPS" -ge "$MINFPS" ] && [ "$FPS" -le 185 ] || { echo "ERROR: FPS out of range"; exit 64; }
+[ "$SECONDS" -ge 1 ] && [ "$SECONDS" -le 5 ] || { echo "ERROR: duration 1..5"; exit 64; }
+[ "$(id -u)" = 0 ] || { echo "ERROR: Root required"; exit 77; }
+[ "$(owner_pid)" = -1 ] || { echo "ERROR: game_pid occupied or unreadable"; exit 73; }
+[ -e "$FRAME" ] || { echo "ERROR: frame_sync absent"; exit 72; }
+[ "$MODE" != early ] || { [ -e "$ED/frame_produce" ] && [ -r "$ED/ed_args" ]; } || { echo "ERROR: early_detect absent"; exit 72; }
+if [ "$MODE" = ab ]; then EXE="$MODDIR/bin/fengchi_ab_arm64"; else EXE="$MODDIR/bin/fengchi_ed_arm64"; fi
+[ -x "$EXE" ] || { echo "ERROR: missing executable $EXE"; exit 70; }
+TS=$(date +%Y%m%d_%H%M%S 2>/dev/null)
+[ -n "$TS" ] || TS=$(date +%s)
+WORK="/data/local/tmp/FengchiLab_\${MODE}_\${TS}_$$"
+mkdir -p "$WORK" || exit 70
+snapshot before "$WORK/before.txt"
+printf 'mode=%s fps=%s duration=%s\n' "$MODE" "$FPS" "$SECONDS" > "$WORK/metadata.txt"
+if [ "$MODE" = ab ]; then
+  "$EXE" --fps "$FPS" --seconds "$SECONDS" --busy-us 2500 --csv "$WORK/samples.csv" > "$WORK/native.txt" 2>&1 &
+else
+  "$EXE" --fps "$FPS" --seconds "$SECONDS" --csv "$WORK/samples.csv" > "$WORK/native.txt" 2>&1 &
+fi
+NATIVE_PID=$!
+CHILD_PID=$NATIVE_PID
+wait "$NATIVE_PID"
+RC=$?
+rescue
+snapshot after "$WORK/after.txt"
+printf 'exit_code=%s\nnative_process_pid=%s\n' "$RC" "$CHILD_PID" >> "$WORK/metadata.txt"
+NAME="FengchiLab_\${MODE}_\${TS}_$$"
+ARCHIVE="$OUTBASE/$NAME.tar.gz"
+if tar -czf "$ARCHIVE" -C "$WORK" . 2>/dev/null; then
+  echo "Archive: $ARCHIVE"
+  echo 'Result:'
+  tail -n 14 "$WORK/native.txt"
+  echo "Native exit code: $RC"
+else
+  echo "Archive creation failed; raw logs: $WORK"
+fi
+exit "$RC"
