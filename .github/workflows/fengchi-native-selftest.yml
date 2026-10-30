@@ -17,6 +17,8 @@ jobs:
         run: |
           cc -std=c11 -Wall -Wextra -Werror -O2 tools/fengchi-direct-selftest/fengchi_selftest.c -o /tmp/fengchi_selftest_host
           /tmp/fengchi_selftest_host --info
+          cc -std=c11 -Wall -Wextra -Werror -O2 tools/fengchi-direct-selftest/fengchi_ab.c -o /tmp/fengchi_ab_host
+          /tmp/fengchi_ab_host --info
       - name: Install Android NDK 27
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -n 1)"
@@ -28,11 +30,16 @@ jobs:
           CLANG="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
           mkdir -p out
           "$CLANG" -std=c11 -O2 -Wall -Wextra -Werror -fPIE -pie -Wl,-z,relro,-z,now tools/fengchi-direct-selftest/fengchi_selftest.c -o out/fengchi_selftest_arm64
+          "$CLANG" -std=c11 -O2 -Wall -Wextra -Werror -fPIE -pie -Wl,-z,relro,-z,now tools/fengchi-direct-selftest/fengchi_ab.c -o out/fengchi_ab_arm64
+          file out/fengchi_ab_arm64
           file out/fengchi_selftest_arm64
           readelf -h out/fengchi_selftest_arm64 | grep -E 'Class:|Machine:'
           test -s out/fengchi_selftest_arm64
+          test -s out/fengchi_ab_arm64
       - uses: actions/upload-artifact@v4
         with:
           name: fengchi-selftest-arm64
-          path: out/fengchi_selftest_arm64
+          path: |
+            out/fengchi_selftest_arm64
+            out/fengchi_ab_arm64
           if-no-files-found: error
