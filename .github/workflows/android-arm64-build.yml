@@ -71,9 +71,9 @@ jobs:
           cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
           chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh
           cd .out/module
-          zip -r -9 ../dist/UnityFPSUnlocker-FengchiUniversal-arm64-alpha2.zip .
+          zip -r -9 ../dist/UnityFPSUnlocker-DEV-Unverified-arm64.zip .
       - uses: actions/upload-artifact@v4
         with:
-          name: UnityFPSUnlocker-FengchiUniversal-arm64-alpha2
-          path: .out/dist/UnityFPSUnlocker-FengchiUniversal-arm64-alpha2.zip
+          name: UnityFPSUnlocker-DEV-Unverified-arm64
+          path: .out/dist/UnityFPSUnlocker-DEV-Unverified-arm64.zip
           if-no-files-found: error
