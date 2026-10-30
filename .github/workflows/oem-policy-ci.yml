@@ -42,3 +42,9 @@ jobs:
       - name: Verify SurfaceFlinger presentation-FPS parser
         run: |
           sh tests/test_sf_latency_parser.sh
+      - name: Validate WebUI game scanner and native profile storage
+        run: |
+          bash tests/test_fps_profilectl.sh
+          sh -n packaging/profile-ui.sh packaging/perf-guard.sh packaging/service.sh
+          node --check webroot/app.js
+          python3 tests/check_webui.py
