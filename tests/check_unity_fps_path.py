@@ -17,7 +17,8 @@ assert "GetResolution" not in fps_body, "FPS setter may not call old Unity Resol
 assert "Utility::NopFunc" not in fps_body, "Do not patch executable instructions"
 assert "GetResolution();" not in fps_body
 assert "const bool want_resolution = OemPolicy::ShouldSetResolution(cfg.scale_);" in limiter
-assert "if (!Unity::GetInstance().Init(handle, want_resolution))" in limiter
+assert "Unity::GetInstance().Init(handle, want_resolution)" in limiter
+assert "for (int attempt = 0; attempt < 12; ++attempt)" in limiter
 assert "if (!Unity::GetInstance().SetFrameRate(cfg.fps_, false))" in limiter
 assert "bool SetFrameRate(int, bool)" in header
 print("Unity FPS-only ABI isolation static checks passed. Live game FPS unverified.")
