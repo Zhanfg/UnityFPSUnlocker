@@ -53,7 +53,7 @@ namespace FPSLimiter {
             if (cfg.mod_opcode_) {
                 LOG("OEM-safe build: opcode modification was requested but is disabled");
             }
-            if (!Unity::GetInstance().EnableFrameRateInterceptor(cfg.fps_)) {
+            if (!Unity::GetInstance().EnableFrameRateInterceptor(cfg.fps_, cfg.render_interval_)) {
                 ERROR("Unity native FPS interceptor installation failed");
                 return;
             }
