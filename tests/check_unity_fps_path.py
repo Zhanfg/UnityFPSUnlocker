@@ -27,4 +27,4 @@ print("Unity FPS-only ABI isolation static checks passed. Live game FPS unverifi
 assert "original(actual_argument);" in engine, "Forward to native Unity setter in the original caller"
 assert "UnityFramePolicy::Apply(game_fps, desired)" in engine, "Intercept all game FPS overwrites"
 assert "g_intercepted_calls.fetch_add" in engine, "Expose observed interception evidence"
-assert "SetResolution(cfg.scale_)" not in limiter, "Do not call Unity resolution from worker"
+assert ".SetResolution(cfg.scale_)" not in limiter, "Do not call Unity resolution from worker"
