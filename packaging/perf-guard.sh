@@ -2,8 +2,8 @@
 # Opt-in, per-running-game CPU/GPU frequency floors. Never exceed kernel max.
 # All sysfs writes are within currently published frequency ranges.
 ROOT=${0%/*}
-STATE=/data/local/tmp/.ufps_performance_state
-ACTIVE=/data/local/tmp/.ufps_active_game
+STATE=/data/adb/ufps-webui/perf-state
+ACTIVE=/data/adb/ufps-webui/active-game
 restore() {
   [ -f "$STATE" ] || { rm -f "$ACTIVE";return; }
   while IFS='|' read -r node previous applied;do
