@@ -18,7 +18,9 @@ assert "Utility::NopFunc" not in fps_body, "Do not patch executable instructions
 assert "GetResolution();" not in fps_body
 assert "const bool want_resolution = OemPolicy::ShouldSetResolution(cfg.scale_);" in limiter
 assert "Unity::GetInstance().Init(handle, false)" in limiter
-assert "for (int attempt = 0; attempt < 12; ++attempt)" in limiter
+assert "UnityStartup::SleepMs(elapsed)" in limiter, "Use bounded faster startup probe"
+assert "UnityStartup::StartupDelaySeconds(cfg.delay_)" in limiter, "Bound user-configured delays"
+assert 'Unity FPS hook NOT_ARMED' in limiter, "Missing IL2CPP setter must fail explicitly"
 assert "if (!Unity::GetInstance().EnableFrameRateInterceptor(cfg.fps_, cfg.render_interval_))" in limiter
 assert "Unity::GetInstance().SetFrameRate(cfg.fps_, false)" not in limiter
 assert "bool SetFrameRate(int, bool)" in header
