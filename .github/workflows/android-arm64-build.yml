@@ -61,8 +61,11 @@ jobs:
           cp packaging/post-fs-data.sh .out/module/post-fs-data.sh
           cp TargetList.json .out/module/TargetList.json
           cp packaging/fengchi-probe.sh .out/module/fengchi-probe.sh
+          cp packaging/sf-present-fps.sh .out/module/sf-present-fps.sh
+          cp packaging/sf_latency_parser.awk .out/module/sf_latency_parser.awk
+          sh -n .out/module/sf-present-fps.sh
           cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
-          chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh
+          chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh
           cd .out/module
           zip -r -9 ../dist/UnityFPSUnlocker-FengchiUniversal-arm64-alpha2.zip .
       - uses: actions/upload-artifact@v4
