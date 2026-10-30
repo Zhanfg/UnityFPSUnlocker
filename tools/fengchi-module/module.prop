@@ -1,0 +1,6 @@
+id=fengchi_direct_lab
+name=Fengchi Direct Lab (OPlus GameOpt)
+version=0.3.0-alpha1
+versionCode=300
+author=Fengchi experimental research contributors
+description=Standalone native FrameSync A/B and guarded Early Detect experiments. No boot overrides or GPU interpolation.
