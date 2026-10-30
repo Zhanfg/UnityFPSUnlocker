@@ -17,18 +17,25 @@
 
 namespace {
 UnityOnDemand::Runtime g_ondemand_runtime;
+// Early in process startup, Unity may expose libil2cpp.so before its icall
+// registry is ready. Fast probing must not flood Android logcat.
+std::atomic<unsigned> g_init_unready_count{0};
+bool ShouldReportUnready() {
+    const unsigned n = g_init_unready_count.fetch_add(1, std::memory_order_relaxed) + 1;
+    return n <= 3 || n % 64 == 0;
+}
 } // namespace
 
 bool Unity::Init(void* handle, bool resolve_resolution) {
     if ((il2cpp_resolve_icall = (il2cpp_resolve_icall_f)xdl_sym(handle, "il2cpp_resolve_icall", nullptr)) == nullptr) {
-        ERROR("il2cpp_resolve_icall not found");
+        if (ShouldReportUnready()) ERROR("il2cpp_resolve_icall not found yet");
         return false;
     }
 
     set_targetFrameRate = reinterpret_cast<set_targetFrameRate_f>(
         UnityIcall::ResolveFirst(il2cpp_resolve_icall, UnityIcall::kTargetFpsSetters));
     if (!set_targetFrameRate) {
-        ERROR("Unity FPS setter icall unavailable: cannot request FPS");
+        if (ShouldReportUnready()) ERROR("Unity FPS setter icall not ready yet");
         return false;
     }
     get_targetFrameRate = reinterpret_cast<get_targetFrameRate_f>(
