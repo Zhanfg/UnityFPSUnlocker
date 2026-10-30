@@ -47,6 +47,12 @@ bool Unity::Init(void* handle, bool resolve_resolution) {
         xdl_sym(handle, "il2cpp_class_from_name", nullptr));
     ondemand_api.class_get_field_from_name = reinterpret_cast<decltype(ondemand_api.class_get_field_from_name)>(
         xdl_sym(handle, "il2cpp_class_get_field_from_name", nullptr));
+    ondemand_api.field_get_type = reinterpret_cast<decltype(ondemand_api.field_get_type)>(
+        xdl_sym(handle, "il2cpp_field_get_type", nullptr));
+    ondemand_api.type_get_type = reinterpret_cast<decltype(ondemand_api.type_get_type)>(
+        xdl_sym(handle, "il2cpp_type_get_type", nullptr));
+    ondemand_api.field_get_flags = reinterpret_cast<decltype(ondemand_api.field_get_flags)>(
+        xdl_sym(handle, "il2cpp_field_get_flags", nullptr));
     ondemand_api.field_static_get_value = reinterpret_cast<decltype(ondemand_api.field_static_get_value)>(
         xdl_sym(handle, "il2cpp_field_static_get_value", nullptr));
     ondemand_api.field_static_set_value = reinterpret_cast<decltype(ondemand_api.field_static_set_value)>(
