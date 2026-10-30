@@ -35,8 +35,19 @@ namespace FPSLimiter {
         }
         if (handle) {
             const bool want_resolution = OemPolicy::ShouldSetResolution(cfg.scale_);
-            if (!Unity::GetInstance().Init(handle, want_resolution)) {
-                ERROR("Unity FPS initialization failed: no FPS request performed");
+            // libil2cpp may be mapped before icall tables become available.
+            // Retry symbol resolution after Unity initialization, without writing
+            // executable pages or modifying the OEM scheduling stack.
+            bool ready = false;
+            for (int attempt = 0; attempt < 12; ++attempt) {
+                if (Unity::GetInstance().Init(handle, want_resolution)) {
+                    ready = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            if (!ready) {
+                ERROR("Unity FPS initialization failed after icall retries; no FPS request performed");
                 return;
             }
             if (cfg.mod_opcode_) {
