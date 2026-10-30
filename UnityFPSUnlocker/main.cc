@@ -55,6 +55,10 @@ absl::Status LoadConfig() {
         if (auto itor2 = itor_json_object.FindMember("scale"); itor2 != itor_json_object.MemberEnd() && itor2->value.IsFloat()) {
             global_cfg.scale_ = itor2->value.GetFloat();
         }
+        if (auto itor2 = itor_json_object.FindMember("render_interval"); itor2 != itor_json_object.MemberEnd() && itor2->value.IsInt()) {
+            // Never implicitly modify managed OnDemandRendering; only 1 is opt-in.
+            global_cfg.render_interval_ = itor2->value.GetInt() == 1;
+        }
     }
 
     if (auto itor = doc.FindMember("custom"); itor != doc.MemberEnd() && itor->value.IsObject()) {
@@ -73,6 +77,9 @@ absl::Status LoadConfig() {
                     }
                     if (auto itor2 = item.value.FindMember("scale"); itor2 != item.value.MemberEnd() && itor2->value.IsFloat()) {
                         cfg.scale_ = itor2->value.GetFloat();
+                    }
+                    if (auto itor2 = item.value.FindMember("render_interval"); itor2 != item.value.MemberEnd() && itor2->value.IsInt()) {
+                        cfg.render_interval_ = itor2->value.GetInt() == 1;
                     }
                 }
                 custom_list[item.name.GetString()] = cfg;
@@ -135,6 +142,7 @@ void CompanionEntry(int s) {
         write_int(s, itor->second.fps_);
         write_int(s, itor->second.mod_opcode_);
         write_float(s, itor->second.scale_);
+        write_int(s, itor->second.render_interval_ ? 1 : 0);
     }
     else {
         write_int(s, 0);
@@ -142,6 +150,7 @@ void CompanionEntry(int s) {
         write_int(s, global_cfg.fps_);
         write_int(s, global_cfg.mod_opcode_);
         write_float(s, global_cfg.scale_);
+        write_int(s, global_cfg.render_interval_ ? 1 : 0);
     }
 }
 
@@ -164,6 +173,7 @@ void MyModule::preAppSpecialize(AppSpecializeArgs* args) {
     current_cfg_.fps_ = read_int(client_socket);
     current_cfg_.mod_opcode_ = read_int(client_socket);
     current_cfg_.scale_ = read_float(client_socket);
+    current_cfg_.render_interval_ = read_int(client_socket) == 1;
 
     close(client_socket);
 }
