@@ -13,7 +13,7 @@
 
 using namespace rapidjson;
 #ifndef FPS_PROFILE_CONFIG_PATH
-#define FPS_PROFILE_CONFIG_PATH "/data/local/tmp/TargetList.json"
+#define FPS_PROFILE_CONFIG_PATH "/data/adb/ufps-webui/TargetList.json"
 #endif
 static constexpr const char* PATH=FPS_PROFILE_CONFIG_PATH;
 static bool validpkg(const std::string& s) {
