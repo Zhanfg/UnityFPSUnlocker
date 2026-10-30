@@ -53,14 +53,18 @@ namespace FPSLimiter {
             if (cfg.mod_opcode_) {
                 LOG("OEM-safe build: opcode modification was requested but is disabled");
             }
-            if (!Unity::GetInstance().SetFrameRate(cfg.fps_, false)) {
-                ERROR("Unity native FPS request failed");
+            if (!Unity::GetInstance().EnableFrameRateInterceptor(cfg.fps_)) {
+                ERROR("Unity native FPS interceptor installation failed");
                 return;
             }
+            // Do not call Application.targetFrameRate from this worker.
+            // The game must call the setter to trigger our same-thread hook.
+            // Resolution modification is deliberately not performed here;
+            // it requires a separately validated engine-thread ABI pathway.
             if (want_resolution) {
-                Unity::GetInstance().SetResolution(cfg.scale_);
+                LOG("Resolution scale was requested but deferred to protect Unity thread and OEM rendering");
             }
-            LOG("Unity FPS setter invoked (effective frame rate still unverified)");
+            LOG("Unity FPS interceptor armed; awaiting game setter calls (not proof of effective FPS)");
             LOG("***** finished *****");
             return;
         }
