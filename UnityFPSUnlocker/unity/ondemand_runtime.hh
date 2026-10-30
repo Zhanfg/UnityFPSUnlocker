@@ -14,6 +14,10 @@ struct Api {
     const void* (*assembly_get_image)(const void*) = nullptr;
     void* (*class_from_name)(const void*, const char*, const char*) = nullptr;
     void* (*class_get_field_from_name)(void*, const char*) = nullptr;
+    // Validate the discovered field before any 4-byte read/write.
+    const void* (*field_get_type)(void*) = nullptr;
+    int (*type_get_type)(const void*) = nullptr;
+    unsigned (*field_get_flags)(void*) = nullptr;
     void (*field_static_get_value)(void*, void*) = nullptr;
     void (*field_static_set_value)(void*, void*) = nullptr;
 };
@@ -34,7 +38,9 @@ public:
         Observation o;
         if (!api_.domain_get || !api_.domain_assembly_open ||
             !api_.assembly_get_image || !api_.class_from_name ||
-            !api_.class_get_field_from_name || !api_.field_static_get_value) {
+            !api_.class_get_field_from_name || !api_.field_get_type ||
+            !api_.type_get_type || !api_.field_get_flags ||
+            !api_.field_static_get_value) {
             return o;
         }
         void* field = field_.load(std::memory_order_acquire);
@@ -53,6 +59,13 @@ public:
                 if (klass) field = api_.class_get_field_from_name(klass, "m_RenderFrameInterval");
             }
             if (!field) return o;
+            // IL2CPP enum: I4=0x08. FieldAttributes: Static=0x0010.
+            // Do NOT write arbitrary metadata fields based solely on their names.
+            const void* type = api_.field_get_type(field);
+            if (!type || api_.type_get_type(type) != 0x08 ||
+                (api_.field_get_flags(field) & 0x0010U) == 0) {
+                return o;
+            }
             field_.store(field, std::memory_order_release);
         }
         api_.field_static_get_value(field, &o.before);
