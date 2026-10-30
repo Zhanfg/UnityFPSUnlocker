@@ -19,22 +19,26 @@ public:
 
 class Unity : public Singleton<Unity> {
 public:
-    void Init(void*);
+    // Initialize FPS interface first; expensive resolution probes are opt-in.
+    bool Init(void*, bool resolve_resolution = false);
 
     Resolution GetSystemExtImpl();
     Resolution GetResolution();
     void SetResolution(float);
-    void SetFrameRate(int, bool);
+    // Returns whether the setter was located and invoked (not actual FPS).
+    bool SetFrameRate(int, bool);
 
 private:
     using il2cpp_resolve_icall_f = void* (*)(const char*);
     using set_targetFrameRate_f = void (*)(int);
+    using get_targetFrameRate_f = int (*)(void);
     using SetResolution_t = void (*)(int, int, int, void*);
     using get_currentResolution_t = void (*)(Resolution*);
     using GetSystemExtImpl_t = void (*)(void*, int*, int*);
 
     il2cpp_resolve_icall_f il2cpp_resolve_icall = nullptr;
     set_targetFrameRate_f set_targetFrameRate = nullptr;
+    get_targetFrameRate_f get_targetFrameRate = nullptr;
     SetResolution_t SetResolution_Internal = nullptr;
     get_currentResolution_t get_currentResolution = nullptr;
     GetSystemExtImpl_t GetSystemExtImpl_Internal = nullptr;
