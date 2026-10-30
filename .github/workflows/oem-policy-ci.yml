@@ -30,4 +30,6 @@ jobs:
           /tmp/unity_icall_lookup_test
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_fps_interceptor_test.cpp -o /tmp/unity_fps_interceptor_test
           /tmp/unity_fps_interceptor_test
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_ondemand_runtime_test.cpp -o /tmp/unity_ondemand_runtime_test
+          /tmp/unity_ondemand_runtime_test
           python3 tests/check_unity_fps_path.py
