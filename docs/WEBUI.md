@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.7.0-dev.hotfix1)
+# Unity FPS Unlocker WebUI (v0.7.0-dev.hotfix2)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -64,3 +64,14 @@ chmod 0755 "$MOD/bin/fps-profilectl"
 ```
 
 If the last line prints JSON, restart the module WebUI. If the file is absent, reinstall the complete ZIP and reboot. If the file exists but execution fails with `Permission denied` or `not found`, collect the *exact* error and `ls -lZ` for SELinux/loader diagnosis instead of assuming another cause. This hotfix does not claim actual in-game FPS increases.
+
+## hotfix2: 0 apps and manually set FPS not taking effect
+
+1. Game scanning now prefers native manager APIs `listUserPackages()` or `listPackages("user")`, then `listAllPackages()`, independent of the Root Shell `pm` path. Fallback uses `cmd package list packages -3` and then `pm list packages -3`.
+2. UI initially lists all apps; package naming and GAME metadata are only recommendations. Non-game-labelled Android apps are selectable.
+3. Saving a per-app profile now reads back `TargetList.json` and verifies all user-set values. If persistence fails the UI reports an error; saving does not mean FPS unlocking.
+4. For a selected, running game press **检查游戏注入状态**. The read-only output includes installation lookup, PID, IL2CPP library presence, module state and last tagged hook logs. Recent module logs may belong to other processes; inspect PIDs and timestamps.
+5. `NOT_ARMED` means Unity FPS icall was not available, `ARMED` means interception installed but not necessarily invoked, `NO_HIT` means no game setter call occurred during the 8 second observation, and `HIT` means a game-originated native setter call was intercepted. Even HIT does not prove an actual rendered FPS increase.
+6. Save the target FPS, fully close the game, relaunch it, and run diagnostics again. If the game is not Unity IL2CPP or sets FPS before our hook, this Unity-only native setter path cannot unlock it. UE and OEM interpolation are separate work.
+
+**Safety:** No SCRC or OPGCE database modification, no kernel overclock, no thermal disablement. Unknown app identity is not proof that the FPS intervention succeeded.
