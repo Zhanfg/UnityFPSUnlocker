@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Control · WebUI Install Fix (Dev)
-version=0.7.0-dev.hotfix1
-versionCode=701
+name=Unity FPS Control · Scan & Runtime Diagnostics (Dev)
+version=0.7.0-dev.hotfix2
+versionCode=702
 author=hexstr contributors; OEM-safe fork maintainers
-description=HOTFIX: KernelSU installer explicitly restores native helper execute permission. Unity FPS WebUI, OPGCE/SCRC bridge. Dev; real FPS gain unverified.
+description=Fix package scan via native KernelSU PackageManager; verify saved FPS profile and diagnose Unity hook/IL2CPP. OPGCE/SCRC bridge preserved. Real game FPS still unverified.
