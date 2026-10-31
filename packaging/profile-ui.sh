@@ -2,7 +2,23 @@
 # Fixed-entrypoint WebUI helper, never accepts arbitrary shell fragments.
 MODDIR=${0%/*}
 CLI="$MODDIR/fps-profilectl"
-[ -x "$CLI" ] || { echo "ERROR: profile helper missing" >&2;exit 127; }
+# v0.7.0 was flashed without customize.sh; KernelSU reset extracted
+# native binary permissions to 0644. Recover the module-owned file safely.
+if [ -f "$CLI" ] && [ ! -L "$CLI" ] && [ ! -x "$CLI" ];then
+  chmod 0755 "$CLI" 2>/dev/null || true
+fi
+if [ ! -f "$CLI" ];then
+  echo "ERROR: profile helper file not installed: $CLI" >&2
+  echo "Reflash the complete module ZIP, then reboot." >&2
+  exit 127
+fi
+if [ ! -x "$CLI" ];then
+  echo "ERROR: profile helper has no executable permission: $CLI" >&2
+  echo "Run in Root Shell: chmod 755 '$CLI'" >&2
+  exit 126
+fi
+# Catch missing linker/SELinux/ABI errors explicitly instead of hiding them
+# behind an inaccurate 'helper missing' message.
 ACTION=${1:-}
 case "$ACTION" in
   read) exec "$CLI" read ;;
