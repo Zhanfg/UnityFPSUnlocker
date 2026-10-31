@@ -45,6 +45,7 @@ jobs:
       - name: Validate WebUI game scanner and native profile storage
         run: |
           bash tests/test_fps_profilectl.sh
-          sh -n packaging/profile-ui.sh packaging/perf-guard.sh packaging/service.sh
+          sh tests/test_opgce_bridge.sh
+          sh -n packaging/profile-ui.sh packaging/perf-guard.sh packaging/service.sh packaging/opgce-bridge.sh
           node --check webroot/app.js
           python3 tests/check_webui.py
