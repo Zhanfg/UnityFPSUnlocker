@@ -50,4 +50,5 @@ jobs:
           sh tests/test_scrc_bridge.sh
           sh -n packaging/profile-ui.sh packaging/perf-guard.sh packaging/service.sh packaging/opgce-bridge.sh packaging/scrc-bridge.sh
           node --check webroot/app.js
+          node tests/webui_native_packages_test.cjs
           python3 tests/check_webui.py
