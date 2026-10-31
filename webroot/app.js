@@ -4,7 +4,7 @@
   const BRIDGE = ROOT + "/bin/profile-ui.sh";
   const $ = id => document.getElementById(id);
   const validPkg = pkg => /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg) && pkg.length <= 220;
-  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, profileReady:false, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
+  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, profileReady:false, filter:"all", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
   const notice = (message, error=false) => { $("notice").textContent=message; $("notice").classList.toggle("error",error); };
   const shellEscape = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
   let requestSeq = 0;
@@ -309,23 +309,65 @@
       $("measure").disabled = false;
     }
   }
+  function gameHint(pkg) {
+    return /game|unity|unreal|mihoyo|hoyoverse|tmgp|netease|roblox|supercell|kurogame|hypergryph|yostar|bilibili/i.test(pkg);
+  }
+  // The manager has a native Android PackageManager cache.
+  async function nativePackages() {
+    const api=window.ksu || window.apatch;
+    if (!api) return [];
+    for (const [method,args] of [
+      ["listUserPackages",[]],["listPackages",["user"]],["listAllPackages",[]]
+    ]) {
+      if (typeof api[method] !== "function") continue;
+      try {
+        const raw=await Promise.resolve(api[method](...args));
+        const list=typeof raw==="string"?JSON.parse(raw):raw;
+        if (!Array.isArray(list)) continue;
+        const pkgs=list.filter(p=>typeof p==="string"&&validPkg(p));
+        if (pkgs.length) return [...new Set(pkgs)];
+      } catch (_) { /* try another manager interface */ }
+    }
+    return [];
+  }
   async function scan() {
-    $("rescan").disabled=true;notice("正在扫描用户安装的应用并识别游戏候选…");
-    try{
-      const result=await root("scan", true);
+    $("rescan").disabled=true;
+    notice("正在读取已安装应用…");
+    try {
+      const native=await nativePackages();
       const apps=[];
-      for(const line of words(result)){
-        const p=line.indexOf("|");if(p<0)continue;
-        const tag=line.slice(0,p),pkg=line.slice(p+1);
-        if(validPkg(pkg))apps.push({pkg,game:tag==="GAME"});
+      let origin="";
+      if(native.length) {
+        for(const pkg of native) apps.push({pkg,game:gameHint(pkg)});
+        origin="KernelSU 应用管理接口";
+      } else {
+        // Root PackageManager fallback for older WebUI managers.
+        const result=await root("scan",true);
+        for(const line of words(result)){
+          const p=line.indexOf("|");if(p<0)continue;
+          const tag=line.slice(0,p),pkg=line.slice(p+1);
+          if(validPkg(pkg)) apps.push({pkg,game:tag==="GAME"||gameHint(pkg)});
+        }
+        origin="Root PackageManager";
       }
       state.apps=apps;
+      if(!apps.some(a=>a.game)){
+        state.filter="all";
+        for(const f of document.querySelectorAll("[data-filter]"))
+          f.classList.toggle("on",f.dataset.filter==="all");
+      }
       renderApps();
-      notice("扫描到 "+apps.length+" 个应用，游戏候选为启发式识别；切换“全部应用”可选择任何游戏。");
-      // Get names when native KSU Next supports app-label lookup.
+      if(!apps.length) {
+        notice("扫描为空：管理器原生接口及 Root PackageManager 都未返回应用。可手动输入包名，但这不代表 FPS 已注入。",true);
+      } else {
+        notice("从 "+origin+" 找到 "+apps.length+" 个应用。游戏识别仅作候选；切换“全部应用”可查看完整列表。");
+      }
       enrich(apps.map(a=>a.pkg));
-    }catch(e){notice("扫描失败："+e.message,true);}
-    finally{$("rescan").disabled=false;}
+    } catch(e) {
+      notice("扫描失败："+String(e.message||e)+"。可以尝试手动包名。",true);
+    } finally {
+      $("rescan").disabled=false;
+    }
   }
   async function guard(fn) {
     try{await fn();}catch(e){notice(e.message||String(e),true);}
