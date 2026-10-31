@@ -17,7 +17,7 @@ function fakeElement(tag="div") {
   };
   return el;
 }
-async function runScenario(native) {
+async function runScenario(mode) {
   const ids=new Map();
   const $=id=>{
     if(!ids.has(id)) ids.set(id,fakeElement());
@@ -62,9 +62,25 @@ async function runScenario(native) {
       packageName=>({packageName,appLabel:packageName.split(".").at(-1)})
     ));}
   };
-  if(native) rootAPI.listUserPackages=()=>JSON.stringify([
-    "com.example.ordinary","com.miHoYo.Yuanshen"
-  ]);
+  const packages=["com.example.ordinary","com.miHoYo.Yuanshen"];
+  if(mode==="next") rootAPI.listUserPackages=()=>JSON.stringify(packages);
+  if(mode==="sukisu") {
+    rootAPI.pm=()=>({
+      listPackages(type) {
+        assert.equal(type,"user");
+        return JSON.stringify(packages);
+      },
+      getPackagesInfo(input) {
+        return JSON.stringify(JSON.parse(input).map(
+          packageName=>({packageName,appLabel:"SukiSU Label "+packageName})
+        ));
+      }
+    });
+    // The native SukiSU pm() API must take precedence over the legacy API.
+    rootAPI.listPackages=()=>{throw new Error("legacy should not be called");};
+  }
+  if(mode==="sukisu-legacy")
+    rootAPI.listPackages=(type)=>{assert.equal(type,"user");return JSON.stringify(packages);};
   const window={ksu:rootAPI};
   const document={
     getElementById:$,
@@ -75,7 +91,7 @@ async function runScenario(native) {
     Promise,Set,Map,Number,Array,JSON,String,Error};
   vm.runInNewContext(fs.readFileSync("webroot/app.js","utf8"),context);
   for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve));
-  if(native){
+  if(mode!=="shell"){
     assert.equal($("count").textContent,"2/2");
     assert(!calls.some(c=>c.includes(" scan")),
       "native PackageManager should bypass shell scan");
@@ -83,6 +99,10 @@ async function runScenario(native) {
     const item=$("apps").children.find(el=>el.dataset.pkg==="com.example.ordinary");
     assert(item,"unknown game must appear in All Apps");
     item.events.click();
+    if(mode==="sukisu") {
+      assert.equal($("appname").textContent,"SukiSU Label com.example.ordinary");
+      assert.equal($("selectedIcon").children[0].src,"ksu://icon/com.example.ordinary");
+    }
     $("fps").value="120";
     $("interval").checked=false;
     $("delay").value="0";
@@ -97,7 +117,9 @@ async function runScenario(native) {
   }
 }
 (async()=>{
-  await runScenario(true);
-  await runScenario(false);
-  console.log("WebUI native PackageManager + shell fallback + save readback PASS");
+  await runScenario("sukisu");
+  await runScenario("sukisu-legacy");
+  await runScenario("next");
+  await runScenario("shell");
+  console.log("SukiSU Ultra pm()/legacy + KernelSU-Next + shell fallback + persisted FPS PASS");
 })().catch(e=>{console.error(e);process.exitCode=1;});
