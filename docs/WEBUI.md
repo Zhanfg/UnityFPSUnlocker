@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.7.0-dev)
+# Unity FPS Unlocker WebUI (v0.7.0-dev.hotfix1)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -49,3 +49,18 @@ See [SCRC_BRIDGE.md](SCRC_BRIDGE.md). SCRC metadata is read only. If SCRC is ena
 4. FPS setting is read anew by the Zygisk companion for **each new game process**; after saving, fully exit and restart the target game. A corrupted config fails closed instead of silently continuing with stale settings.
 
 The app scan also uses the asynchronous manager callback where supported, to avoid freezing the WebUI while PackageManager evaluates game categories.
+
+## v0.7.0-dev.hotfix1: WebUI 'profile helper missing' on KernelSU
+
+The v0.7.0 ZIP contained `bin/fps-profilectl`, but did **not** contain a `customize.sh`; KernelSU's installer may reset the native binary to mode `0644`, making the earlier WebUI `-x` guard report `ERROR: profile helper missing`. The fix adds an install-time `customize.sh` which invokes `set_perm` on all executable scripts and the ARM64 helper after extraction. The WebUI bridge also attempts a one-time owner-only `chmod 0755` on a present but nonexecutable binary, reporting missing files separately from wrong permissions. CI now simulates KernelSU stripping all permissions before sourcing customize.sh and tests WebUI helper lookup.
+
+If you are already running the affected v0.7.0 build, execute in a native Root Shell (no Termux required):
+
+```sh
+MOD=/data/adb/modules/unityfpsunlocker_oemsafe
+ls -l "$MOD/bin/fps-profilectl"
+chmod 0755 "$MOD/bin/fps-profilectl"
+"$MOD/bin/fps-profilectl" read
+```
+
+If the last line prints JSON, restart the module WebUI. If the file is absent, reinstall the complete ZIP and reboot. If the file exists but execution fails with `Permission denied` or `not found`, collect the *exact* error and `ls -lZ` for SELinux/loader diagnosis instead of assuming another cause. This hotfix does not claim actual in-game FPS increases.
