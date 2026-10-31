@@ -246,6 +246,7 @@
     $("remove").disabled=!state.profileReady || !saved(pkg);
     $("save").disabled=!state.profileReady;
     $("evidence").hidden=true;
+    $("diagOutput").hidden=true;
     $("scrcProfile").textContent = state.scrc.enabled
       ? state.scrc.catalog.has(pkg)
         ? "发现此游戏的 SCRC 部署配置。本模块停止对 CPU/GPU 最低频率节点写入，继续独立管理 Unity FPS。"
@@ -280,8 +281,17 @@
       const result=await root("set "+args);
       if(result!=="OK")throw new Error(result||"保存失败");
       await loadProfiles();
+      const committed = state.profiles[pkg];
+      if(!committed || committed.fps!==fps ||
+         committed.render_interval!==interval ||
+         committed.cpu_min_khz!==cpu ||
+         committed.gpu_min_mhz!==gpu ||
+         committed.delay!==delay) {
+        throw new Error("保存后复读校验失败：配置没有完整持久化，请勿认为已生效。");
+      }
       renderApps();renderEditor();
-      notice("已固定 "+label(pkg)+" 的配置。帧率调整须重启该游戏；频率下限由守护进程自动应用。");
+      notice("已验证配置持久化：" + label(pkg) + " → " + (fps===0?"不调整帧率":fps+" FPS") +
+        "。接下来必须完全结束并重新打开游戏；这是配置成功，不代表 Unity Hook 或实际 FPS 已生效。请使用“检查游戏注入状态”。");
     }finally{$("save").disabled=false;}
   }
   async function remove() {
@@ -291,6 +301,30 @@
     if(result!=="OK")throw new Error(result||"删除失败");
     await loadProfiles();renderApps();renderEditor();
     notice("已移除配置。请重启游戏以移除该进程中的 Native Hook。");
+  }
+  async function diagnose() {
+    const pkg=state.selected;
+    if(!validPkg(pkg)) throw new Error("请先选择已安装的游戏。");
+    $("diagnose").disabled=true;
+    $("diagOutput").hidden=false;
+    $("diagOutput").textContent="正在读取游戏进程及 Unity Hook 日志…";
+    try {
+      const output=await root("diagnose "+shellEscape(pkg),true);
+      const profile=state.profiles[pkg];
+      const summary = profile
+        ? "已保存 FPS=" + (profile.fps||0) + "，配置存在不等于 FPS 生效。\n"
+        : "尚无该游戏的已保存配置；请先设定目标 FPS 并保存。\n";
+      $("diagOutput").textContent=summary+(output||"未读取到游戏状态");
+      if(/PROCESS\|not-running/.test(output))
+        notice("未发现运行中的游戏进程：请打开游戏，再执行注入检查。",true);
+      else if(/IL2CPP\|not-observed/.test(output))
+        notice("未发现 libil2cpp.so：游戏可能不是 Unity IL2CPP，当前原生拦截路径不会生效。",true);
+      else if(/IL2CPP\|loaded/.test(output))
+        notice("Unity IL2CPP 已加载。继续查看诊断输出中的 ARMED、HIT、NO_HIT 日志；只有 HIT 才表示曾拦截原生设置调用。");
+      else notice("已读取设备运行信息，但未能确认 Unity IL2CPP / Hook 命中状态。");
+    } finally {
+      $("diagnose").disabled=false;
+    }
   }
   async function measure() {
     const pkg = state.selected;
@@ -376,6 +410,7 @@
   $("search").addEventListener("input",renderApps);
   $("rescan").addEventListener("click",()=>guard(scan));
   $("measure").addEventListener("click",()=>guard(measure));
+  $("diagnose").addEventListener("click",()=>guard(diagnose));
   $("save").addEventListener("click",()=>guard(save));
   $("remove").addEventListener("click",()=>guard(remove));
   $("manualadd").addEventListener("click",()=>select($("manualpkg").value.trim()));
