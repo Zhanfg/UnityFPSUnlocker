@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Control · COSA Bridge (Dev)
-version=0.7.0-dev
-versionCode=700
+name=Unity FPS Control · WebUI Install Fix (Dev)
+version=0.7.0-dev.hotfix1
+versionCode=701
 author=hexstr contributors; OEM-safe fork maintainers
-description=Per-game Unity FPS WebUI, fresh Zygisk profiles, SurfaceFlinger evidence, read-only OPGCE/SCRC coexistence. Dev build; actual unlock unverified.
+description=HOTFIX: KernelSU installer explicitly restores native helper execute permission. Unity FPS WebUI, OPGCE/SCRC bridge. Dev; real FPS gain unverified.
