@@ -243,6 +243,7 @@
     $("cpu").value=p.cpu_min_khz?Math.round(p.cpu_min_khz/1000):"";
     $("gpu").value=p.gpu_min_mhz||"";
     $("remove").disabled=!saved(pkg);
+    $("evidence").hidden=true;
     $("scrcProfile").textContent = state.scrc.enabled
       ? state.scrc.catalog.has(pkg)
         ? "发现此游戏的 SCRC 部署配置。本模块停止对 CPU/GPU 最低频率节点写入，继续独立管理 Unity FPS。"
@@ -289,6 +290,23 @@
     await loadProfiles();renderApps();renderEditor();
     notice("已移除配置。请重启游戏以移除该进程中的 Native Hook。");
   }
+  async function measure() {
+    const pkg = state.selected;
+    if (!validPkg(pkg)) throw new Error("请先选择一个游戏。");
+    $("measure").disabled = true;
+    $("evidence").hidden = false;
+    $("evidence").textContent = "正在读取运行中游戏的 SurfaceFlinger 时间戳…";
+    try {
+      const result = await root("measure " + shellEscape(pkg), true);
+      $("evidence").textContent = result || "采集任务已完成，但未输出数据。";
+      notice("帧率证据已采集。请查看下方结果和设备 Download 目录中的归档。");
+    } catch (e) {
+      $("evidence").textContent = String(e.message || e);
+      throw e;
+    } finally {
+      $("measure").disabled = false;
+    }
+  }
   async function scan() {
     $("rescan").disabled=true;notice("正在扫描用户安装的应用并识别游戏候选…");
     try{
@@ -313,6 +331,7 @@
   $("fps").addEventListener("change",()=>$("customFpsWrap").hidden=$("fps").value!=="custom");
   $("search").addEventListener("input",renderApps);
   $("rescan").addEventListener("click",()=>guard(scan));
+  $("measure").addEventListener("click",()=>guard(measure));
   $("save").addEventListener("click",()=>guard(save));
   $("remove").addEventListener("click",()=>guard(remove));
   $("manualadd").addEventListener("click",()=>select($("manualpkg").value.trim()));
