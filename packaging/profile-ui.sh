@@ -60,6 +60,9 @@ case "$ACTION" in
       ''|.*|*..*|*[!a-zA-Z0-9._]*) echo "Invalid package" >&2;exit 64;;
     esac
     case "$2" in *.*) ;; *) echo "Invalid package" >&2;exit 64;; esac
+    # Give the user time to switch from the manager WebUI to the game.
+    # Sampling a backgrounded game would falsely report low/unavailable FPS.
+    sleep 5
     exec sh "$MODDIR/../fps-evidence.sh" "$2" 2 ;;
   runtime) exec "$CLI" runtime ;;
   restore)
