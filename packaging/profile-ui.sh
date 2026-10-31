@@ -54,11 +54,18 @@ case "$ACTION" in
     exec sh "$MODDIR/../opgce-bridge.sh" status ;;
   opgce-list)
     exec sh "$MODDIR/../opgce-bridge.sh" list ;;
+  measure)
+    [ "$#" -eq 2 ] || exit 64
+    case "$2" in
+      ''|.*|*..*|*[!a-zA-Z0-9._]*) echo "Invalid package" >&2;exit 64;;
+    esac
+    case "$2" in *.*) ;; *) echo "Invalid package" >&2;exit 64;; esac
+    exec sh "$MODDIR/../fps-evidence.sh" "$2" 2 ;;
   runtime) exec "$CLI" runtime ;;
   restore)
     sh "$MODDIR/../perf-guard.sh" restore || exit 75
     echo OK;;
   *)
-    echo "Usage: profile-ui.sh read|scan|caps|set PKG FPS INTERVAL CPU_KHZ GPU_MHZ DELAY|remove PKG" >&2
+    echo "Usage: profile-ui.sh read|scan|caps|measure PKG|set PKG FPS INTERVAL CPU_KHZ GPU_MHZ DELAY|remove PKG" >&2
     exit 64 ;;
 esac
