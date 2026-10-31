@@ -45,21 +45,25 @@ case "$ACTION" in
     done
     ;;
   scan)
-    # All user packages; heuristic recommendations, never hide other apps.
-    pm list packages -3 2>/dev/null | sed -n 's/^package://p' | while IFS= read -r pkg;do
-      case "$pkg" in ''|*[!a-zA-Z0-9._]*) continue;; esac
+    # Probe both Android command entrypoints; some OEM WebUI shells return an
+    # empty stdout for 'pm list packages -3' despite having installed games.
+    PKGS=$(cmd package list packages -3 2>/dev/null) || PKGS=""
+    if [ -z "$PKGS" ];then
+      PKGS=$(pm list packages -3 2>/dev/null) || PKGS=""
+    fi
+    if [ -z "$PKGS" ];then
+      echo "ERROR: Android package manager returned no user applications" >&2
+      exit 75
+    fi
+    printf '%s\n' "$PKGS" | sed -n 's/^package://p' | while IFS= read -r pkg;do
+      case "$pkg" in ''|*[!a-zA-Z0-9._]*) continue;;esac
       case "$pkg" in
-        *game*|*unity*|*unreal*|com.miHoYo.*|com.HoYoverse.*|com.tencent.tmgp.*|com.netease.*|com.roblox.*|com.supercell.*)
+        *game*|*unity*|*unreal*|com.miHoYo.*|com.HoYoverse.*|com.tencent.tmgp.*|com.netease.*|com.roblox.*|com.supercell.*|com.kurogame.*)
           printf 'GAME|%s\n' "$pkg";;
         *)
-          # CATEGORY_GAME=0 in Android ApplicationInfo. OEM dumpsys output
-          # varies; absence is unknown, so still expose the app for selection.
-          if dumpsys package "$pkg" 2>/dev/null | grep -Eq 'category=0([^0-9]|$)|category: GAME|android.intent.category.GAME';then
-            printf 'GAME|%s\n' "$pkg"
-          else
-            printf 'APP|%s\n' "$pkg"
-          fi;;
-
+          # Do not do a full dumpsys for EVERY installed application: it can
+          # stall the WebUI on modern ColorOS. Unknown still appears in All.
+          printf 'APP|%s\n' "$pkg";;
       esac
     done
     ;;
