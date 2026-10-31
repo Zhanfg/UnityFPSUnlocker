@@ -7,16 +7,56 @@
   const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
   const notice = (message, error=false) => { $("notice").textContent=message; $("notice").classList.toggle("error",error); };
   const shellEscape = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
-  async function root(cmd) {
+  let requestSeq = 0;
+  // KSU-Next's async exec callback keeps the WebUI responsive while the
+  // per-app PackageManager scan or SurfaceFlinger evidence capture runs.
+  // Standard synchronous exec remains available for short, local reads.
+  async function root(cmd, longRunning=false) {
     const api = window.ksu || window.apatch;
-    if (!api || typeof api.exec !== "function") throw new Error("KernelSU/APatch WebUI Root 接口不可用。请在支持 WebUI 的管理器内打开模块。");
-    let result = await Promise.resolve(api.exec("sh "+shellEscape(BRIDGE)+" "+cmd));
-    if (result && typeof result === "object") {
-      if ("errno" in result && Number(result.errno)!==0)
-        throw new Error(result.stderr || "Root exec errno=" + result.errno);
-      result = result.stdout ?? result.output ?? "";
+    if (!api || typeof api.exec !== "function")
+      throw new Error("KernelSU/APatch Root WebUI 接口不可用，请在模块管理器内打开。");
+    const command = "sh " + shellEscape(BRIDGE) + " " + cmd;
+    if (longRunning && api === window.ksu) {
+      const callback = "__ufps_call_" + (++requestSeq);
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          delete window[callback];
+          reject(new Error("Root 操作超时；可重新扫描或使用手动包名。"));
+        }, 45000);
+        let settled = false;
+        const finish = (code, stdout, stderr) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          delete window[callback];
+          if (Number(code) !== 0) reject(new Error(String(stderr || stdout || "Root 任务失败").trim()));
+          else resolve(String(stdout || "").trim());
+        };
+        window[callback] = finish;
+        try {
+          // Native KernelSU WebUI expects a global callback *name*, not a JS function.
+          const returned = api.exec(command, callback);
+          // Older managers only support synchronous exec(command).
+          if (typeof returned === "string" && returned.length)
+            finish(0, returned, "");
+          else if (returned && typeof returned === "object" && "errno" in returned)
+            finish(returned.errno, returned.stdout || "", returned.stderr || "");
+        } catch (e) {
+          clearTimeout(timeout);
+          delete window[callback];
+          reject(e);
+        }
+      });
     }
-    if (typeof result !== "string") throw new Error("无法识别 WebUI exec 返回值");
+    // Native ksu.exec returns stdout as a string. A bundled JS facade may
+    // instead return {errno, stdout, stderr}. Handle both without eval.
+    const result = await Promise.resolve(api.exec(command));
+    if (result && typeof result === "object") {
+      if ("errno" in result && Number(result.errno) !== 0)
+        throw new Error(String(result.stderr || "Root exec failed"));
+      return String(result.stdout ?? result.output ?? "").trim();
+    }
+    if (typeof result !== "string") throw new Error("无法识别 Root 命令输出");
     return result.trim();
   }
   const words = data => data.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -252,7 +292,7 @@
   async function scan() {
     $("rescan").disabled=true;notice("正在扫描用户安装的应用并识别游戏候选…");
     try{
-      const result=await root("scan");
+      const result=await root("scan", true);
       const apps=[];
       for(const line of words(result)){
         const p=line.indexOf("|");if(p<0)continue;
