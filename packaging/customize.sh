@@ -34,6 +34,7 @@ for f in \
   scrc-bridge.sh \
   sf-present-fps.sh \
   fps-evidence.sh \
+  game-diag.sh \
   fengchi-probe.sh;do
   apply_exec_perm "$f" || {
     echo "! Aborting installation: mandatory runtime file failed validation"
