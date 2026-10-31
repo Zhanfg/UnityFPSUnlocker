@@ -4,7 +4,7 @@
   const BRIDGE = ROOT + "/bin/profile-ui.sh";
   const $ = id => document.getElementById(id);
   const validPkg = pkg => /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg) && pkg.length <= 220;
-  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()} };
+  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
   const notice = (message, error=false) => { $("notice").textContent=message; $("notice").classList.toggle("error",error); };
   const shellEscape = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
   async function root(cmd) {
@@ -84,6 +84,44 @@
       $("opgceStatus").textContent="OPGCE 状态不可用："+String(e.message||e);
     }
   }
+  async function loadScrc() {
+    try {
+      const output = await root("scrc-status");
+      const values = {};
+      for (const line of words(output)) {
+        const p = line.indexOf("|");
+        if (p > 0) values[line.slice(0, p)] = line.slice(p + 1);
+      }
+      const catalog = new Set();
+      if (values.ENABLED === "1") {
+        for (const line of words(await root("scrc-list"))) {
+          if (!line.startsWith("SCRC|")) continue;
+          const pkg = line.slice(5);
+          if (validPkg(pkg)) catalog.add(pkg);
+        }
+      }
+      state.scrc = {
+        installed:values.INSTALLED === "1", enabled:values.ENABLED === "1",
+        version:values.VERSION || "unknown", count:Number(values.DEPLOYED_PROFILES) || 0,
+        dual:values.DUAL_INJECTORS === "1", opgs:values.OPGS_NODE || "?",
+        kernel:values.OPGS_KERNEL_FAMILY || "unknown", catalog
+      };
+      $("scrcStatus").textContent = !state.scrc.installed
+        ? "未安装 SCRC"
+        : state.scrc.enabled
+          ? "SCRC " + state.scrc.version + " 已启用 · 部署 " + state.scrc.count
+            + " 份配置 · OPGS 节点：" + state.scrc.opgs + " · 内核：" + state.scrc.kernel
+          : "SCRC " + state.scrc.version + " 已安装但未启用";
+      $("scrcWarning").hidden = !state.scrc.dual;
+      $("scrcWarning").textContent = state.scrc.dual
+        ? "警告：SCRC 与 OPGCE 同时启用，两个注入器都可能修改 COSA 数据库。建议只保留一个 COSA 注入器；本模块不会自动处理其数据库。"
+        : "";
+      renderApps();
+      renderEditor();
+    } catch (e) {
+      $("scrcStatus").textContent = "SCRC 状态不可用：" + String(e.message || e);
+    }
+  }
   async function loadCaps() {
     try{
       state.caps=await root("caps");
@@ -108,7 +146,7 @@
       Number(b.game)-Number(a.game) || label(a.pkg).localeCompare(label(b.pkg),"zh-CN"));
     const visible=all.filter(a=>{
       if(state.filter==="saved" && !saved(a.pkg))return false;
-      if(state.filter==="games" && !a.game && !saved(a.pkg) && !state.opgce.catalog.has(a.pkg))return false;
+      if(state.filter==="games" && !a.game && !saved(a.pkg) && !state.opgce.catalog.has(a.pkg) && !state.scrc.catalog.has(a.pkg))return false;
       return !search || (label(a.pkg)+" "+a.pkg).toLowerCase().includes(search);
     });
     const list=$("apps");list.replaceChildren();
@@ -119,7 +157,8 @@
       const txt=element("div","apptext");
       txt.append(element("strong","",label(a.pkg)),element("small","",a.pkg));
       const opgceMatch=state.opgce.enabled && state.opgce.catalog.has(a.pkg);
-      const tag=element("div","appflag",saved(a.pkg)?"已配置":opgceMatch?"OPGCE":a.game?"游戏候选":"");
+      const scrcMatch=state.scrc.enabled && state.scrc.catalog.has(a.pkg);
+      const tag=element("div","appflag",saved(a.pkg)?"已配置":scrcMatch?"SCRC":opgceMatch?"OPGCE":a.game?"游戏候选":"");
       item.append(badge,txt,tag);
       item.addEventListener("click",()=>select(a.pkg));
       list.append(item);
@@ -164,6 +203,11 @@
     $("cpu").value=p.cpu_min_khz?Math.round(p.cpu_min_khz/1000):"";
     $("gpu").value=p.gpu_min_mhz||"";
     $("remove").disabled=!saved(pkg);
+    $("scrcProfile").textContent = state.scrc.enabled
+      ? state.scrc.catalog.has(pkg)
+        ? "发现此游戏的 SCRC 部署配置。本模块停止对 CPU/GPU 最低频率节点写入，继续独立管理 Unity FPS。"
+        : "SCRC 已启用。按其上游兼容要求，本模块对所有游戏停用 CPU/GPU 最低频率写入。"
+      : "SCRC 未启用，调度能力由独立配置或 OPGCE 处理。";
     const opgceOwns = state.opgce.enabled && state.opgce.catalog.has(pkg);
     $("opgceProfile").textContent = opgceOwns
       ? "已发现该游戏在 OPGCE 部署策略/别名中：其调度优先，本模块将跳过 CPU/GPU 频率下限写入。"
@@ -241,5 +285,5 @@
     for(const other of document.querySelectorAll("[data-filter]"))other.classList.toggle("on",other===f);
     renderApps();
   });
-  guard(async()=>{await loadProfiles();await loadCaps();await loadOpgce();await scan();});
+  guard(async()=>{await loadProfiles();await loadCaps();await loadOpgce();await loadScrc();await scan();});
 })();
