@@ -4,7 +4,7 @@
   const BRIDGE = ROOT + "/bin/profile-ui.sh";
   const $ = id => document.getElementById(id);
   const validPkg = pkg => /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg) && pkg.length <= 220;
-  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"" };
+  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()} };
   const notice = (message, error=false) => { $("notice").textContent=message; $("notice").classList.toggle("error",error); };
   const shellEscape = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
   async function root(cmd) {
@@ -46,6 +46,44 @@
     let data;try {data=JSON.parse(raw);}catch(_){throw new Error("设备 TargetList.json 无法解析；已拒绝覆盖原配置");}
     state.profiles=(data && data.custom && typeof data.custom==="object")?data.custom:{};
   }
+  async function loadOpgce() {
+    try {
+      const status = await root("opgce-status");
+      const values = {};
+      for (const line of words(status)) {
+        const divider = line.indexOf("|");
+        if (divider > 0) values[line.slice(0, divider)] = line.slice(divider + 1);
+      }
+      const catalog = new Set();
+      if (values.ENABLED === "1") {
+        const lines = await root("opgce-list");
+        for (const entry of words(lines)) {
+          const idx = entry.indexOf("|");
+          if (idx < 0) continue;
+          const type = entry.slice(0, idx), pkg = entry.slice(idx + 1);
+          if ((type === "OPGCE" || type === "OPGCE_ALIAS") && validPkg(pkg)) catalog.add(pkg);
+        }
+      }
+      state.opgce = {
+        installed:values.INSTALLED === "1",
+        enabled:values.ENABLED === "1",
+        version:values.VERSION || "unknown",
+        mode:values.MODE || "unavailable",
+        active:Number(values.ACTIVE_PROFILES) || 0,
+        catalog
+      };
+      $("opgceStatus").textContent = !state.opgce.installed
+        ? "未检测到 OPGCE · 本模块使用独立频率策略"
+        : state.opgce.enabled
+          ? "OPGCE " + state.opgce.version + " 已启用 · 已部署 " + state.opgce.active
+            + " 个策略 · powercfg 状态：" + state.opgce.mode
+          : "检测到 OPGCE " + state.opgce.version + "，但模块已禁用";
+      renderApps();
+      renderEditor();
+    } catch (e) {
+      $("opgceStatus").textContent="OPGCE 状态不可用："+String(e.message||e);
+    }
+  }
   async function loadCaps() {
     try{
       state.caps=await root("caps");
@@ -70,7 +108,7 @@
       Number(b.game)-Number(a.game) || label(a.pkg).localeCompare(label(b.pkg),"zh-CN"));
     const visible=all.filter(a=>{
       if(state.filter==="saved" && !saved(a.pkg))return false;
-      if(state.filter==="games" && !a.game && !saved(a.pkg))return false;
+      if(state.filter==="games" && !a.game && !saved(a.pkg) && !state.opgce.catalog.has(a.pkg))return false;
       return !search || (label(a.pkg)+" "+a.pkg).toLowerCase().includes(search);
     });
     const list=$("apps");list.replaceChildren();
@@ -80,7 +118,8 @@
       const badge=element("div","appbadge","◈");
       const txt=element("div","apptext");
       txt.append(element("strong","",label(a.pkg)),element("small","",a.pkg));
-      const tag=element("div","appflag",saved(a.pkg)?"已配置":a.game?"游戏候选":"");
+      const opgceMatch=state.opgce.enabled && state.opgce.catalog.has(a.pkg);
+      const tag=element("div","appflag",saved(a.pkg)?"已配置":opgceMatch?"OPGCE":a.game?"游戏候选":"");
       item.append(badge,txt,tag);
       item.addEventListener("click",()=>select(a.pkg));
       list.append(item);
@@ -125,6 +164,12 @@
     $("cpu").value=p.cpu_min_khz?Math.round(p.cpu_min_khz/1000):"";
     $("gpu").value=p.gpu_min_mhz||"";
     $("remove").disabled=!saved(pkg);
+    const opgceOwns = state.opgce.enabled && state.opgce.catalog.has(pkg);
+    $("opgceProfile").textContent = opgceOwns
+      ? "已发现该游戏在 OPGCE 部署策略/别名中：其调度优先，本模块将跳过 CPU/GPU 频率下限写入。"
+      : state.opgce.enabled
+        ? "OPGCE 已安装，但未发现该游戏的已部署策略；仍可使用本模块独立的频率控制。"
+        : "未启用 OPGCE；独立频率控制按用户配置执行。";
   }
   function numberField(id,min,max) {
     const v=$(id).value.trim();
@@ -196,5 +241,5 @@
     for(const other of document.querySelectorAll("[data-filter]"))other.classList.toggle("on",other===f);
     renderApps();
   });
-  guard(async()=>{await loadProfiles();await loadCaps();await scan();});
+  guard(async()=>{await loadProfiles();await loadCaps();await loadOpgce();await scan();});
 })();
