@@ -21,8 +21,8 @@
   <div class="paneltop"><h3>应用列表 <small id="count">0</small></h3><button id="rescan" class="outline">重新扫描</button></div>
   <input id="search" type="search" placeholder="搜索游戏名称 / 包名…" autocomplete="off" aria-label="搜索已安装应用">
   <div class="filterbar">
-    <button data-filter="games" class="filter on">游戏候选</button>
-    <button data-filter="all" class="filter">全部应用</button>
+    <button data-filter="games" class="filter">游戏候选</button>
+    <button data-filter="all" class="filter on">全部应用</button>
     <button data-filter="saved" class="filter">已配置</button>
   </div>
   <div id="apps" class="apps" aria-label="应用列表"></div>
@@ -38,6 +38,8 @@
     <div id="customFpsWrap" hidden><input id="customFps" type="number" min="30" max="240" placeholder="30–240 FPS" inputmode="numeric"></div>
     <label class="switchline"><span><strong>解除按需渲染间隔</strong><small>仅 Unity，尝试设为 1；可能影响菜单和待机省电</small></span><input type="checkbox" id="interval"></label>
     <label for="delay">启动延迟（秒）</label><input id="delay" type="number" min="0" max="15" value="0" inputmode="numeric">
+    <div class="manualrow" style="margin-top:16px"><button id="diagnose" class="outline" type="button">检查游戏注入状态</button></div>
+    <div id="diagOutput" class="caps" hidden role="status"></div>
     <div class="manualrow" style="margin-top:16px"><button id="measure" class="outline" type="button">采集游戏实际帧率</button></div>
     <p class="hint">点击后请在 5 秒内切回目标游戏，保持前台运行至少 5 秒，再回 WebUI 查看结果。仅采集 SurfaceFlinger 时间戳与本模块日志。</p>
     <div class="caps" id="evidence" hidden role="status"></div>
