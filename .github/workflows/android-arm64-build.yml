@@ -74,6 +74,7 @@ jobs:
           cp packaging/fengchi-probe.sh .out/module/fengchi-probe.sh
           cp packaging/profile-ui.sh .out/module/bin/profile-ui.sh
           cp .out/fps-profilectl .out/module/bin/fps-profilectl
+          cp packaging/opgce-bridge.sh .out/module/opgce-bridge.sh
           cp packaging/perf-guard.sh .out/module/perf-guard.sh
           cp packaging/service.sh .out/module/service.sh
           cp -R webroot .out/module/webroot
@@ -83,7 +84,7 @@ jobs:
           cp packaging/sf-present-fps.sh .out/module/sf-present-fps.sh
           cp packaging/fps-evidence.sh .out/module/fps-evidence.sh
           cp packaging/sf_latency_parser.awk .out/module/sf_latency_parser.awk
-          sh -n .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh
+          sh -n .out/module/opgce-bridge.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/opgce-bridge.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh
           cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
           chmod 0755 .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh .out/module/bin/fps-profilectl
           cd .out/module
