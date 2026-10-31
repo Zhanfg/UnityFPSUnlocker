@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.4.0-dev)
+# Unity FPS Unlocker WebUI (v0.5.0-dev)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -32,3 +32,7 @@
 
 ## Commands and privacy
 All WebUI operations are local. The app list and labels are never transmitted externally. No server, tracking, CDN, user token, or third-party configuration service is required. Files are stored on-device with root permissions.
+
+## OPGCE compatibility
+
+See [OPGCE_BRIDGE.md](OPGCE_BRIDGE.md). Installed OPGCE strategies are detected read-only and suppress this module's competing CPU/GPU frequency floors for matched games. This does not copy encrypted game strategies, call inject_core or guarantee real FPS.
