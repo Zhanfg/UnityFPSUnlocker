@@ -40,6 +40,13 @@
     <label for="delay">启动延迟（秒）</label><input id="delay" type="number" min="0" max="15" value="0" inputmode="numeric">
     </div>
     <div class="block">
+      <div class="sectionlabel"><h4>SCRC 5.7 兼容</h4><span>COSA · 只读检测</span></div>
+      <div id="scrcStatus" class="caps">正在检测 SCRC…</div>
+      <p id="scrcProfile" class="hint">正在检查此游戏的 SCRC 配置…</p>
+      <p id="scrcWarning" class="hint" hidden></p>
+      <p class="hint">SCRC 启用时，我们不会向 CPU/GPU 频率节点写入最低频率；Unity FPS 参数仍独立保存。不会执行 SCRC 注入程序、内核补丁、服务修复或卸载清理。</p>
+    </div>
+    <div class="block">
       <div class="sectionlabel"><h4>OPGCE 调度适配</h4><span>COSA · 只读检测</span></div>
       <div id="opgceStatus" class="caps">正在检测已安装的 OPGCE…</div>
       <p id="opgceProfile" class="hint">正在检查此游戏的 OPGCE 策略…</p>
