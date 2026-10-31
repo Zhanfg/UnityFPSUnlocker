@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.7.0-dev.hotfix2)
+# Unity FPS Unlocker WebUI (v0.7.0-dev.hotfix3)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -75,3 +75,15 @@ If the last line prints JSON, restart the module WebUI. If the file is absent, r
 6. Save the target FPS, fully close the game, relaunch it, and run diagnostics again. If the game is not Unity IL2CPP or sets FPS before our hook, this Unity-only native setter path cannot unlock it. UE and OEM interpolation are separate work.
 
 **Safety:** No SCRC or OPGCE database modification, no kernel overclock, no thermal disablement. Unknown app identity is not proof that the FPS intervention succeeded.
+
+## SukiSU Ultra-specific WebUI integration (hotfix3)
+
+The target Root manager is **SukiSU Ultra**, not KernelSU-Next. The actual SukiSU manager source provides `ksu.pm().listPackages("user")` and `ksu.pm().getPackagesInfo(JSON.stringify(packages))`, alongside legacy `ksu.listPackages("user")` and `ksu.getPackagesInfo(...)`. On supported SukiSU builds, app icons can be loaded using `ksu://icon/<package>`. `ksu.exec(command)` and `ksu.exec(command, callbackName)` are implemented in SukiSU's WebViewInterface.
+
+The WebUI **prioritizes SukiSU's `ksu.pm()` API** and falls back to its legacy APIs, then KernelSU-Next's distinct APIs and finally rooted PackageManager. This corrects the earlier assumption that SukiSU and KernelSU-Next expose identical JavaScript bridges.
+
+**Important:** SukiSU grants root and manages modules, but that alone does not establish a working Zygisk injection service. A Zygisk-capable provider (e.g. Zygisk Next, if supported and enabled in this environment) must actually inject our `zygisk/arm64-v8a.so` into the selected game. The game diagnostics now enumerates enabled Zygisk provider *candidates* without claiming active injection. Check `ARMED` / `HIT` game-process log entries before believing any unlocked FPS report.
+
+Official SukiSU interface source paths:
+- SukiSU-Ultra/SukiSU-Ultra: `manager/app/src/main/java/com/sukisu/ultra/ui/webui/WebViewInterface.kt`
+- SukiSU-Ultra/SukiSU-Ultra: `manager/app/src/main/java/com/sukisu/ultra/ui/webui/pm/KsuPm.kt`
