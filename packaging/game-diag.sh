@@ -35,6 +35,32 @@ else
 fi
 if [ -r "$ROOT/zygisk/arm64-v8a.so" ];then echo 'ZYGISK_FILE|present';else echo 'ZYGISK_FILE|missing';fi
 if [ -e "$ROOT/disable" ];then echo 'MODULE|disabled';else echo 'MODULE|enabled-marker';fi
+# SukiSU Ultra manages root permissions but is not, by itself, proof that
+# a Zygisk provider is active. Detect possible enabled provider modules
+# without calling their binaries, altering mount namespaces or declaring
+# injection success based on a module.prop file.
+ZYGISK_CANDIDATES=""
+for module in /data/adb/modules/*;do
+  [ -f "$module/module.prop" ] || continue
+  [ ! -e "$module/disable" ] && [ ! -e "$module/remove" ] || continue
+  [ "$module" = "$ROOT" ] && continue
+  provider_id=$(sed -n 's/^id=//p' "$module/module.prop" | head -n 1)
+  case "$provider_id" in
+    *zygisk*|*Zygisk*|*Zygisk*|*rezygisk*|*ReZygisk*)
+      if [ -z "$ZYGISK_CANDIDATES" ];then
+        ZYGISK_CANDIDATES="$provider_id"
+      else
+        ZYGISK_CANDIDATES="$ZYGISK_CANDIDATES,$provider_id"
+      fi
+      ;;
+  esac
+done
+if [ -n "$ZYGISK_CANDIDATES" ];then
+  printf 'ZYGISK_PROVIDER_CANDIDATES|%s\n' "$ZYGISK_CANDIDATES"
+else
+  echo 'ZYGISK_PROVIDER_CANDIDATES|none-detected'
+fi
+echo 'ZYGISK_INJECTION_CONFIRMED|not-verified'
 # Collect only our own tag. Do not leak other application logs.
 # Hook logs cannot be conclusively associated with an app unless their PID
 # matches; logs from the zygisk companion may have a different PID.
