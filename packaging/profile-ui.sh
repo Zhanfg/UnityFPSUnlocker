@@ -46,6 +46,10 @@ case "$ACTION" in
       esac
     done
     ;;
+  opgce-status)
+    exec sh "$MODDIR/../opgce-bridge.sh" status ;;
+  opgce-list)
+    exec sh "$MODDIR/../opgce-bridge.sh" list ;;
   runtime) exec "$CLI" runtime ;;
   restore)
     sh "$MODDIR/../perf-guard.sh" restore || exit 75
