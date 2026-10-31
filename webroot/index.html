@@ -40,6 +40,12 @@
     <label for="delay">启动延迟（秒）</label><input id="delay" type="number" min="0" max="15" value="0" inputmode="numeric">
     </div>
     <div class="block">
+      <div class="sectionlabel"><h4>OPGCE 调度适配</h4><span>COSA · 只读检测</span></div>
+      <div id="opgceStatus" class="caps">正在检测已安装的 OPGCE…</div>
+      <p id="opgceProfile" class="hint">正在检查此游戏的 OPGCE 策略…</p>
+      <p class="hint">如该游戏已部署 OPGCE 策略，本模块只调整 Unity FPS，不同时施加 CPU/GPU 最低频率。不会调用 OPGCE 注入器或修改其加密策略。</p>
+    </div>
+    <div class="block">
       <div class="sectionlabel"><h4>性能与频率</h4><span>可选 · 内核原生频点</span></div>
       <p class="hint">这是 CPU/GPU <b>最低频率锁定</b>，不是突破内核最高频率的真正超频。游戏退出自动恢复；不支持的频点会跳过。</p>
       <label for="cpu">CPU 最低频率 (MHz)</label><input id="cpu" type="number" min="0" max="5000" step="1" placeholder="0 = 不限制" inputmode="numeric">
