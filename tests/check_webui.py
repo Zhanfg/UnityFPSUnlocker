@@ -54,3 +54,13 @@ assert 'enabled()' in opgce
 assert 'ACTIVE_PROFILES|' in opgce
 assert 'sh "$OPGCE" managed "$1"' in service
 assert 'sh "$GUARD" restore' in service
+
+scrc = (root / "packaging/scrc-bridge.sh").read_text()
+for element_id in ("scrcStatus","scrcProfile","scrcWarning"):
+    assert element_id in m.ids
+for token in ('scrc-status','scrc-list','state.scrc.catalog','DUAL_INJECTORS'):
+    assert token in js or token in bridge or token in scrc
+assert 'sh "$SCRC" active' in service, "SCRC must own scheduling before local frequency floors"
+assert 'SCRC\\ *)' in service, "SCRC handling must trigger restore"
+assert 'encrypted_oplus-config' in scrc
+assert 'managed)' in scrc and 'active)' in scrc
