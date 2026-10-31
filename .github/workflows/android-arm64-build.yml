@@ -84,7 +84,8 @@ jobs:
           test -s .out/module/webroot/app.js
           test -s .out/module/webroot/style.css
           cp packaging/sf-present-fps.sh .out/module/sf-present-fps.sh
-          cp packaging/fps-evidence.sh .out/module/fps-evidence.sh\n          cp packaging/game-diag.sh .out/module/game-diag.sh
+          cp packaging/fps-evidence.sh .out/module/fps-evidence.sh
+          cp packaging/game-diag.sh .out/module/game-diag.sh
           cp packaging/sf_latency_parser.awk .out/module/sf_latency_parser.awk
           sh -n .out/module/game-diag.sh .out/module/scrc-bridge.sh .out/module/opgce-bridge.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/opgce-bridge.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh
           cp libs/Release/arm64-v8a.so .out/module/zygisk/arm64-v8a.so
