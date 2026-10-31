@@ -34,7 +34,7 @@ assert "set " in js and "remove " in js
 assert "cpu_min_khz" in js and "gpu_min_mhz" in js
 assert "scan)" in bridge and "caps)" in bridge and "restore)" in bridge
 assert "pm list packages -3" in bridge
-assert "dumpsys package" in bridge
+assert "cmd package list packages -3" in bridge
 assert "pidof" in service
 assert "scaling_available_frequencies" in guard
 assert "available_frequencies" in guard
@@ -67,14 +67,14 @@ assert 'managed)' in scrc and 'active)' in scrc
 
 # The WebUI must execute slow game scan and FPS evidence collection
 # asynchronously, while per-game settings remain fresh for each app launch.
-for element_id in ("measure", "evidence"):
+for element_id in ("measure", "evidence", "diagnose", "diagOutput"):
     assert element_id in m.ids
-assert 'root("scan", true)' in js
+assert 'nativePackages()' in js\nassert 'listUserPackages' in js and 'listPackages' in js
 assert 'root("measure " + shellEscape(pkg), true)' in js
 assert 'window[callback] = finish;' in js
 assert 'api.exec(command, callback)' in js
 assert 'measure)' in bridge
-assert 'fps-evidence.sh' in bridge
+assert 'fps-evidence.sh' in bridge\nassert 'game-diag.sh' in bridge and 'diagnose)' in bridge\nassert 'committed.fps!==fps' in js
 main = (root / "UnityFPSUnlocker/main.cc").read_text()
 assert "std::lock_guard<std::mutex> lock(config_mutex);" in main
 assert "const auto result = LoadConfig(); !result.ok()" in main
