@@ -19,6 +19,7 @@ executables = (
     "bin/fps-profilectl", "bin/profile-ui.sh", "service.sh",
     "post-fs-data.sh", "perf-guard.sh", "opgce-bridge.sh",
     "scrc-bridge.sh", "sf-present-fps.sh", "fps-evidence.sh",
+    "game-diag.sh",
     "fengchi-probe.sh",
 )
 with TemporaryDirectory(prefix="ksu-install-") as tmp:
