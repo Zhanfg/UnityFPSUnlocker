@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Control · Scan & Runtime Diagnostics (Dev)
-version=0.7.0-dev.hotfix2
-versionCode=702
+name=Unity FPS Control · SukiSU Ultra WebUI (Dev)
+version=0.7.0-dev.hotfix3
+versionCode=703
 author=hexstr contributors; OEM-safe fork maintainers
-description=Fix package scan via native KernelSU PackageManager; verify saved FPS profile and diagnose Unity hook/IL2CPP. OPGCE/SCRC bridge preserved. Real game FPS still unverified.
+description=SukiSU Ultra ksu.pm() native package scan, per-game FPS profiles and runtime Zygisk diagnostics, read-only COSA bridge. Dev; FPS uplift unverified.
