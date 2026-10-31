@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <thread>
+#include <mutex>
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/status/status.h>
@@ -13,8 +14,6 @@
 #include <absl/strings/str_split.h>
 #include <absl/strings/substitute.h>
 
-#include "file_watch/dispatcher/epoller.hh"
-#include "file_watch/listener.hh"
 #include "fpslimiter.hh"
 #include "utility/oem_policy.hh"
 #include "utility/fengchi_probe.hh"
@@ -24,16 +23,16 @@
 
 using namespace rapidjson;
 
-static bool is_loaded = false;
-static int watch_descriptor = -1;
 static absl::flat_hash_map<std::string, ConfigValue> custom_list;
 static ConfigValue global_cfg;
-static FileWatch::Listener* file_watch_listener = nullptr;
+static std::mutex config_mutex;
 
 constexpr const char* ConfigFile = "/data/adb/ufps-webui/TargetList.json";
 
 absl::Status LoadConfig() {
+    // Fail closed: do not use a previous game's settings after malformed JSON.
     custom_list.clear();
+    global_cfg = ConfigValue(0, 0, false, -1.0f, false);
 
     auto read_path = Utility::LoadJsonFromFile(ConfigFile);
     if (!read_path.ok()) {
@@ -94,48 +93,22 @@ absl::Status LoadConfig() {
     return absl::OkStatus();
 }
 
-void OnModified(int wd) {
-    if (wd == watch_descriptor) {
-        LoadConfig().IgnoreError();
-    }
-}
+// Zygisk Companion handles one process configuration at startup. A WebUI
+// save uses an atomic rename, which invalidates inode-based inotify watches.
+// Re-read on EVERY specialization; the JSON is small and is read in root
+// companion context, not on a game's rendering or main thread.
+REGISTER_ZYGISK_MODULE(MyModule)
+REGISTER_ZYGISK_COMPANION(CompanionEntry)
 
-void OnDeleted() {
-    watch_descriptor = -1;
-}
-
-// In zygiskd memory.
 void CompanionEntry(int s) {
-    std::string package_name = read_string(s);
-    if (is_loaded == false) {
-        if (auto res = LoadConfig(); res.ok()) {
-            is_loaded = true;
-            // Device-agnostic detection; never writes OEM scheduling controls.
-            // Independent feature flags avoid incorrectly requiring every OEM
-            // module to expose the same procfs nodes across kernel versions.
-            const auto oem = FengchiProbe::Detect();
-            LOG("[OEM probe] hmbird=%d game_opt=%d frame_sync=%d early_detect=%d geas=%d candidate=%d",
-                oem.hmbird_scheduler, oem.game_opt, oem.frame_sync,
-                oem.early_detect, oem.geas_control, oem.HasVendorGamePath());
-            file_watch_listener = new FileWatch::Listener();
-            EPoller* file_watch_poller = new EPoller(file_watch_listener);
-            EPoller::reserved_list_.push_back(file_watch_poller);
-            std::thread([=] {
-                while (true) {
-                    file_watch_poller->Poll();
-                }
-            }).detach();
-            watch_descriptor = file_watch_listener->Register(ConfigFile, OnModified, OnDeleted);
-        }
-        else {
-            ERROR("LoadConfig error: %s", res.message().data());
-        }
+    const std::string package_name = read_string(s);
+    std::lock_guard<std::mutex> lock(config_mutex);
+    if (const auto result = LoadConfig(); !result.ok()) {
+        ERROR("UnityFPSUnlocker config load failed; disabling injection for this launch: %s",
+            result.message().data());
+        custom_list.clear();
+        global_cfg = ConfigValue(0, 0, false, -1.0f, false);
     }
-
-    if (is_loaded && watch_descriptor == -1) {
-        watch_descriptor = file_watch_listener->Register(ConfigFile, OnModified, OnDeleted);
-    }
-
     if (auto itor = custom_list.find(package_name); itor != custom_list.end()) {
         write_int(s, 1);
         write_int(s, itor->second.delay_);
@@ -153,9 +126,6 @@ void CompanionEntry(int s) {
         write_int(s, global_cfg.render_interval_ ? 1 : 0);
     }
 }
-
-REGISTER_ZYGISK_MODULE(MyModule)
-REGISTER_ZYGISK_COMPANION(CompanionEntry)
 
 void MyModule::onLoad(Api* api, JNIEnv* env) {
     this->api = api;
