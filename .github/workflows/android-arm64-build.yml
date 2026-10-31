@@ -69,6 +69,7 @@ jobs:
         run: |
           mkdir -p .out/module/zygisk .out/module/bin .out/dist
           cp packaging/module.prop .out/module/module.prop
+          cp packaging/customize.sh .out/module/customize.sh
           cp packaging/post-fs-data.sh .out/module/post-fs-data.sh
           cp TargetList.json .out/module/TargetList.json
           cp packaging/fengchi-probe.sh .out/module/fengchi-probe.sh
@@ -90,6 +91,9 @@ jobs:
           chmod 0755 .out/module/scrc-bridge.sh .out/module/opgce-bridge.sh .out/module/post-fs-data.sh .out/module/fengchi-probe.sh .out/module/sf-present-fps.sh .out/module/fps-evidence.sh .out/module/service.sh .out/module/perf-guard.sh .out/module/bin/profile-ui.sh .out/module/bin/fps-profilectl
           cd .out/module
           zip -r -9 ../dist/UnityFPSUnlocker-WebUI-DEV-arm64.zip .
+      - name: Simulate KernelSU extraction and verify real installed permissions
+        run: |
+          python3 tests/verify_installed_module.py .out/dist/UnityFPSUnlocker-WebUI-DEV-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
           name: UnityFPSUnlocker-WebUI-DEV-arm64
