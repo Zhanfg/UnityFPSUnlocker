@@ -295,7 +295,7 @@
     if (!validPkg(pkg)) throw new Error("请先选择一个游戏。");
     $("measure").disabled = true;
     $("evidence").hidden = false;
-    $("evidence").textContent = "正在读取运行中游戏的 SurfaceFlinger 时间戳…";
+    $("evidence").textContent = "请立即切回游戏！5 秒后开始采集 SurfaceFlinger 帧率，保持前台运行至少 5 秒。";
     try {
       const result = await root("measure " + shellEscape(pkg), true);
       $("evidence").textContent = result || "采集任务已完成，但未输出数据。";
