@@ -64,3 +64,18 @@ assert 'sh "$SCRC" active' in service, "SCRC must own scheduling before local fr
 assert 'SCRC\\ *)' in service, "SCRC handling must trigger restore"
 assert 'encrypted_oplus-config' in scrc
 assert 'managed)' in scrc and 'active)' in scrc
+
+# The WebUI must execute slow game scan and FPS evidence collection
+# asynchronously, while per-game settings remain fresh for each app launch.
+for element_id in ("measure", "evidence"):
+    assert element_id in m.ids
+assert 'root("scan", true)' in js
+assert 'root("measure " + shellEscape(pkg), true)' in js
+assert 'window[callback] = finish;' in js
+assert 'api.exec(command, callback)' in js
+assert 'measure)' in bridge
+assert 'fps-evidence.sh' in bridge
+main = (root / "UnityFPSUnlocker/main.cc").read_text()
+assert "std::lock_guard<std::mutex> lock(config_mutex);" in main
+assert "const auto result = LoadConfig(); !result.ok()" in main
+assert "file_watch_listener" not in main
