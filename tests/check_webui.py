@@ -42,3 +42,15 @@ assert "safe_floor" in guard and "restore()" in guard
 assert len(css) > 1000
 assert "http://" not in html and "https://" not in html, "WebUI must work offline"
 print(f"WebUI integrity PASS: {len(m.ids)} unique controls, {len(refs)} JS references")
+
+# OPGCE bridge must never mutate the vendor COSA database or bundled binary.
+opgce = (root / "packaging/opgce-bridge.sh").read_text()
+for field in ("opgceStatus", "opgceProfile"):
+    assert field in m.ids
+for fragment in ("opgce-status", "opgce-list", "state.opgce.catalog", "OPGCE"):
+    assert fragment in js or fragment in bridge
+assert 'managed)' in opgce
+assert 'enabled()' in opgce
+assert 'ACTIVE_PROFILES|' in opgce
+assert 'sh "$OPGCE" managed "$1"' in service
+assert 'sh "$GUARD" restore' in service
