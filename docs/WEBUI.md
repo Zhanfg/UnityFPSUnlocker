@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.6.0-dev)
+# Unity FPS Unlocker WebUI (v0.7.0-dev)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -40,3 +40,12 @@ See [OPGCE_BRIDGE.md](OPGCE_BRIDGE.md). Installed OPGCE strategies are detected 
 ## SCRC compatibility
 
 See [SCRC_BRIDGE.md](SCRC_BRIDGE.md). SCRC metadata is read only. If SCRC is enabled, our CPU/GPU frequency-floor writes are suspended for all games as the upstream requires no competing scheduling modifications. If both SCRC and OPGCE are enabled, the interface warns about two competing COSA injectors; it does not attempt to disable or repair either one.
+
+## Testing FPS from the WebUI
+
+1. Select the configured game, launch that game, then return to the WebUI.
+2. Press **采集游戏实际帧率**. It uses KernelSU's asynchronous exec callback, collects three read-only SurfaceFlinger presentation samples and writes an archive into `/sdcard/Download` when writable (otherwise `/data/local/tmp`).
+3. Inspect `surface_present_fps`, valid samples, median/p95 present intervals, and separately verify Unity native `HIT/NO_HIT`. These measurements do not prove physical panel frequency or OEM interpolation.
+4. FPS setting is read anew by the Zygisk companion for **each new game process**; after saving, fully exit and restart the target game. A corrupted config fails closed instead of silently continuing with stale settings.
+
+The app scan also uses the asynchronous manager callback where supported, to avoid freezing the WebUI while PackageManager evaluates game categories.
