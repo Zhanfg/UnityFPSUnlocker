@@ -38,6 +38,9 @@
     <div id="customFpsWrap" hidden><input id="customFps" type="number" min="30" max="240" placeholder="30–240 FPS" inputmode="numeric"></div>
     <label class="switchline"><span><strong>解除按需渲染间隔</strong><small>仅 Unity，尝试设为 1；可能影响菜单和待机省电</small></span><input type="checkbox" id="interval"></label>
     <label for="delay">启动延迟（秒）</label><input id="delay" type="number" min="0" max="15" value="0" inputmode="numeric">
+    <div class="manualrow" style="margin-top:16px"><button id="measure" class="outline" type="button">采集游戏实际帧率</button></div>
+    <p class="hint">先运行该游戏再采集。将记录 SurfaceFlinger 呈现时间戳与本模块日志，约需数秒。</p>
+    <div class="caps" id="evidence" hidden role="status"></div>
     </div>
     <div class="block">
       <div class="sectionlabel"><h4>SCRC 5.7 兼容</h4><span>COSA · 只读检测</span></div>
