@@ -65,19 +65,33 @@
     const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;
   }
   function label(pkg) { return state.names[pkg] || pkg; }
+  function sukisuPm() {
+    const api=window.ksu;
+    if (!api || typeof api.pm !== "function") return null;
+    try {
+      const pm=api.pm();
+      return pm && typeof pm.listPackages==="function" ? pm : null;
+    } catch(_) { return null; }
+  }
   async function enrich(pkgs) {
     const api=window.ksu;
-    if(!api || typeof api.getPackagesInfo!=="function")return;
-    for(let i=0;i<pkgs.length;i+=40) {
+    const pm=sukisuPm();
+    const getInfo=pm && typeof pm.getPackagesInfo==="function"
+      ? arg=>pm.getPackagesInfo(arg)
+      : api && typeof api.getPackagesInfo==="function"
+        ? arg=>api.getPackagesInfo(arg)
+        : null;
+    if(!getInfo)return;
+    for(let i=0;i<pkgs.length;i+=40){
       try{
-        const raw=await Promise.resolve(api.getPackagesInfo(JSON.stringify(pkgs.slice(i,i+40))));
+        const raw=await Promise.resolve(getInfo(JSON.stringify(pkgs.slice(i,i+40))));
         const infos=typeof raw==="string"?JSON.parse(raw):raw;
         if(!Array.isArray(infos))continue;
         for(const inf of infos) {
-          if(inf && validPkg(inf.packageName) && inf.appLabel)
-            state.names[inf.packageName]=String(inf.appLabel);
+          if(inf && validPkg(inf.packageName) && typeof inf.appLabel==="string" && inf.appLabel)
+            state.names[inf.packageName]=inf.appLabel;
         }
-      }catch(_){/* API optional on older KernelSU */}
+      }catch(_){/* unsupported metadata must not break package scan */}
     }
     renderApps();renderEditor();
   }
@@ -208,7 +222,17 @@
     $("count").textContent=visible.length+"/"+all.length;
   }
   async function showIcon(pkg) {
-    $("selectedIcon").replaceChildren();$("selectedIcon").textContent="◈";
+    $("selectedIcon").replaceChildren();
+    $("selectedIcon").textContent="◈";
+    // SukiSU Ultra serves installed-app icons using its documented
+    // ksu://icon/<packageName> scheme. Do not require Next-only icon APIs.
+    if(window.ksu && typeof window.ksu.pm==="function" && validPkg(pkg)){
+      const img=element("img");
+      img.alt="";
+      img.src="ksu://icon/"+pkg;
+      $("selectedIcon").replaceChildren(img);
+      return;
+    }
     const api=window.ksu;
     if(!api || typeof api.getPackagesIcons!=="function")return;
     try {
@@ -216,11 +240,12 @@
       const list=typeof raw==="string"?JSON.parse(raw):raw;
       if(state.selected!==pkg || !Array.isArray(list) || !list[0]?.icon)return;
       const icon=String(list[0].icon);
-      let src="";
-      if(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(icon))src=icon;
-      else if(/^[A-Za-z0-9+/=]+$/.test(icon))src="data:image/png;base64,"+icon;
-      if(src){const img=element("img");img.alt="";img.src=src;$("selectedIcon").replaceChildren(img);}
-    }catch(_){/* optional native icon API */}
+      if(/^[A-Za-z0-9+/=]+$/.test(icon)){
+        const img=element("img");img.alt="";
+        img.src="data:image/png;base64,"+icon;
+        $("selectedIcon").replaceChildren(img);
+      }
+    }catch(_){/* optional icon API */}
   }
   function select(pkg) {
     if(!validPkg(pkg)){notice("无效的 Android 包名",true);return;}
@@ -349,20 +374,29 @@
   // The manager has a native Android PackageManager cache.
   async function nativePackages() {
     const api=window.ksu || window.apatch;
-    if (!api) return [];
-    for (const [method,args] of [
-      ["listUserPackages",[]],["listPackages",["user"]],["listAllPackages",[]]
-    ]) {
-      if (typeof api[method] !== "function") continue;
-      try {
-        const raw=await Promise.resolve(api[method](...args));
+    if(!api)return {packages:[],origin:""};
+    const sources=[];
+    // SukiSU Ultra manager source (WebViewInterface.kt, KsuPm.kt):
+    // ksu.pm().listPackages("user"); legacy ksu.listPackages("user").
+    const sukisu=sukisuPm();
+    if(sukisu)sources.push(["SukiSU Ultra PM",()=>sukisu.listPackages("user")]);
+    if(typeof api.listPackages==="function")
+      sources.push(["SukiSU Ultra legacy PM",()=>api.listPackages("user")]);
+    // Other Root managers retain their independently documented interfaces.
+    if(typeof api.listUserPackages==="function")
+      sources.push(["KernelSU-Next",()=>api.listUserPackages()]);
+    if(typeof api.listAllPackages==="function")
+      sources.push(["All packages",()=>api.listAllPackages()]);
+    for(const [origin,getter] of sources){
+      try{
+        const raw=await Promise.resolve(getter());
         const list=typeof raw==="string"?JSON.parse(raw):raw;
-        if (!Array.isArray(list)) continue;
-        const pkgs=list.filter(p=>typeof p==="string"&&validPkg(p));
-        if (pkgs.length) return [...new Set(pkgs)];
-      } catch (_) { /* try another manager interface */ }
+        if(!Array.isArray(list))continue;
+        const pkgs=list.filter(pkg=>typeof pkg==="string"&&validPkg(pkg));
+        if(pkgs.length)return {packages:[...new Set(pkgs)],origin};
+      }catch(_){/* continue with next supported interface */}
     }
-    return [];
+    return {packages:[],origin:""};
   }
   async function scan() {
     $("rescan").disabled=true;
@@ -371,9 +405,9 @@
       const native=await nativePackages();
       const apps=[];
       let origin="";
-      if(native.length) {
-        for(const pkg of native) apps.push({pkg,game:gameHint(pkg)});
-        origin="KernelSU 应用管理接口";
+      if(native.packages.length) {
+        for(const pkg of native.packages) apps.push({pkg,game:gameHint(pkg)});
+        origin=native.origin;
       } else {
         // Root PackageManager fallback for older WebUI managers.
         const result=await root("scan",true);
