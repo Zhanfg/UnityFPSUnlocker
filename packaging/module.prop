@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Unlocker · COSA Compatibility (Dev)
-version=0.6.0-dev
-versionCode=600
+name=Unity FPS Control · COSA Bridge (Dev)
+version=0.7.0-dev
+versionCode=700
 author=hexstr contributors; OEM-safe fork maintainers
-description=Unity FPS WebUI with read-only OPGCE/SCRC COSA recognition and non-conflicting frequency floors. DEV: real FPS not verified.
+description=Per-game Unity FPS WebUI, fresh Zygisk profiles, SurfaceFlinger evidence, read-only OPGCE/SCRC coexistence. Dev build; actual unlock unverified.
