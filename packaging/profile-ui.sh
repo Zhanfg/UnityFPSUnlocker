@@ -2,31 +2,32 @@
 # Fixed-entrypoint WebUI helper, never accepts arbitrary shell fragments.
 MODDIR=${0%/*}
 CLI="$MODDIR/fps-profilectl"
-# v0.7.0 was flashed without customize.sh; KernelSU reset extracted
-# native binary permissions to 0644. Recover the module-owned file safely.
-if [ -f "$CLI" ] && [ ! -L "$CLI" ] && [ ! -x "$CLI" ];then
-  chmod 0755 "$CLI" 2>/dev/null || true
-fi
-if [ ! -f "$CLI" ];then
-  echo "ERROR: profile helper file not installed: $CLI" >&2
-  echo "Reflash the complete module ZIP, then reboot." >&2
-  exit 127
-fi
-if [ ! -x "$CLI" ];then
-  echo "ERROR: profile helper has no executable permission: $CLI" >&2
-  echo "Run in Root Shell: chmod 755 '$CLI'" >&2
-  exit 126
-fi
-# Catch missing linker/SELinux/ABI errors explicitly instead of hiding them
-# behind an inaccurate 'helper missing' message.
+# Scan, capability discovery and COSA status are read-only and MUST still
+# work even if a native profile helper is absent or cannot execute.
+require_cli() {
+  # v0.7.0 installation may have reset the binary to 0644.
+  if [ -f "$CLI" ] && [ ! -L "$CLI" ] && [ ! -x "$CLI" ];then
+    chmod 0755 "$CLI" 2>/dev/null || true
+  fi
+  if [ ! -f "$CLI" ];then
+    echo "ERROR: profile helper file not installed: $CLI" >&2
+    return 127
+  fi
+  if [ ! -x "$CLI" ];then
+    echo "ERROR: profile helper is not executable: $CLI" >&2
+    return 126
+  fi
+}
 ACTION=${1:-}
 case "$ACTION" in
-  read) exec "$CLI" read ;;
+  read) require_cli || exit $?; exec "$CLI" read ;;
   set)
     [ $# -eq 7 ] || exit 64
+    require_cli || exit $?
     exec "$CLI" set "$2" "$3" "$4" "$5" "$6" "$7" ;;
   remove)
     [ $# -eq 2 ] || exit 64
+    require_cli || exit $?
     exec "$CLI" remove "$2" ;;
   caps)
     for policy in /sys/devices/system/cpu/cpufreq/policy[0-9]*;do
@@ -80,7 +81,7 @@ case "$ACTION" in
     # Sampling a backgrounded game would falsely report low/unavailable FPS.
     sleep 5
     exec sh "$MODDIR/../fps-evidence.sh" "$2" 2 ;;
-  runtime) exec "$CLI" runtime ;;
+  runtime) require_cli || exit $?; exec "$CLI" runtime ;;
   restore)
     sh "$MODDIR/../perf-guard.sh" restore || exit 75
     echo OK;;
