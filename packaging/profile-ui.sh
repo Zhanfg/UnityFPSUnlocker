@@ -46,6 +46,10 @@ case "$ACTION" in
       esac
     done
     ;;
+  scrc-status)
+    exec sh "$MODDIR/../scrc-bridge.sh" status ;;
+  scrc-list)
+    exec sh "$MODDIR/../scrc-bridge.sh" list ;;
   opgce-status)
     exec sh "$MODDIR/../opgce-bridge.sh" status ;;
   opgce-list)
