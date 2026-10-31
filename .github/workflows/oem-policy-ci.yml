@@ -5,6 +5,10 @@ on:
     branches: [zygisk_module, 'feature/**']
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   policy-test:
     runs-on: ubuntu-latest
@@ -24,3 +28,27 @@ jobs:
           sh tests/test_fengchi_probe.sh
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/fengchi_probe_test.cpp -o /tmp/fengchi_probe_test
           /tmp/fengchi_probe_test
+      - name: Verify Unity IL2CPP FPS invocation remains independent of resolution ABI
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_icall_lookup_test.cpp -o /tmp/unity_icall_lookup_test
+          /tmp/unity_icall_lookup_test
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_fps_interceptor_test.cpp -o /tmp/unity_fps_interceptor_test
+          /tmp/unity_fps_interceptor_test
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_startup_probe_test.cpp -o /tmp/unity_startup_probe_test
+          /tmp/unity_startup_probe_test
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/unity_ondemand_runtime_test.cpp -o /tmp/unity_ondemand_runtime_test
+          /tmp/unity_ondemand_runtime_test
+          python3 tests/check_unity_fps_path.py
+      - name: Verify SurfaceFlinger presentation-FPS parser
+        run: |
+          sh tests/test_sf_latency_parser.sh
+      - name: Validate WebUI game scanner and native profile storage
+        run: |
+          bash tests/test_fps_profilectl.sh
+          sh tests/test_profile_ui_fallback.sh
+          sh tests/test_opgce_bridge.sh
+          sh tests/test_scrc_bridge.sh
+          sh -n packaging/profile-ui.sh packaging/perf-guard.sh packaging/service.sh packaging/opgce-bridge.sh packaging/scrc-bridge.sh
+          node --check webroot/app.js
+          node tests/webui_native_packages_test.cjs
+          python3 tests/check_webui.py

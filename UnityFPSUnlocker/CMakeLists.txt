@@ -69,5 +69,22 @@ target_link_libraries(${LibraryName} absl::status)
 target_link_libraries(${LibraryName} absl::statusor)
 target_link_libraries(${LibraryName} absl::flat_hash_set)
 
+# ARM64-only runtime FPS setter interception. A fixed upstream Dobby revision
+# is cloned by CI and linked statically; no extra runtime APK/.so is required.
+if(ANDROID AND ANDROID_ABI STREQUAL "arm64-v8a")
+    if(NOT DEFINED DOBBY_DIR OR NOT EXISTS "${DOBBY_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "DOBBY_DIR must point to pinned Dobby source for ARM64")
+    endif()
+    set(DOBBY_DEBUG OFF CACHE BOOL "" FORCE)
+    set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+    set(DynamicBinaryInstrument OFF CACHE BOOL "" FORCE)
+    set(Plugin.GlobalOffsetTableHook OFF CACHE BOOL "" FORCE)
+    set(DOBBY_BUILD_TEST OFF CACHE BOOL "" FORCE)
+    set(DOBBY_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+    set(Plugin.SymbolResolver OFF CACHE BOOL "" FORCE)
+    add_subdirectory("${DOBBY_DIR}" "${CMAKE_BINARY_DIR}/dobby-build")
+    target_link_libraries(${LibraryName} dobby)
+endif()
+
 set_target_properties(${LibraryName} PROPERTIES PREFIX "")
 set_target_properties(${LibraryName} PROPERTIES OUTPUT_NAME ${ANDROID_ABI})

@@ -1,10 +1,18 @@
 #!/system/bin/sh
-# Minimal module setup: never alter OEM services, GPU drivers, scheduler or display properties.
+# Persistent, root-owned, non-module storage: survives module upgrades.
+# Migrate existing FPS profiles without overwriting user data.
 MODDIR=${0%/*}
-CONFIG=/data/local/tmp/TargetList.json
+STORE=/data/adb/ufps-webui
+CONFIG="$STORE/TargetList.json"
+LEGACY=/data/local/tmp/TargetList.json
 
-# Do not overwrite existing user configuration.
-if [ ! -e "$CONFIG" ] && [ -f "$MODDIR/TargetList.json" ]; then
-  cp "$MODDIR/TargetList.json" "$CONFIG" || exit 0
-  chmod 0600 "$CONFIG"
+mkdir -p "$STORE" || exit 1
+chmod 0700 "$STORE" || exit 1
+if [ ! -e "$CONFIG" ];then
+  if [ -f "$LEGACY" ] && [ ! -L "$LEGACY" ];then
+    cp "$LEGACY" "$CONFIG" || exit 1
+  else
+    cp "$MODDIR/TargetList.json" "$CONFIG" || exit 1
+  fi
 fi
+chmod 0600 "$CONFIG"

@@ -1,10 +1,11 @@
 #include "fpslimiter.hh"
 
 #include <chrono>
-#include <string>
 #include <thread>
 
 #include "unity/unity_engine.hh"
+#include "unity/startup_probe_policy.hh"
+#include "utility/oem_policy.hh"
 #include "utility/logger.hh"
 
 #include <xdl.h>
@@ -21,30 +22,61 @@ namespace FPSLimiter {
         LOG("[UnityFPSUnlocker][x86_64] Starting...");
 #endif
         cfg.DebugPrint();
-        std::chrono::seconds sleep_duration(cfg.delay_);
-        std::this_thread::sleep_for(sleep_duration);
+        const int delay = UnityStartup::StartupDelaySeconds(cfg.delay_);
+        if (delay != cfg.delay_) {
+            LOG("Unity FPS startup delay clamped from %d to %d sec", cfg.delay_, delay);
+        }
+        if (delay > 0) std::this_thread::sleep_for(std::chrono::seconds(delay));
 
-        LOG("***** begin *****");
+        // Fast bounded probe during initialization, not a 1-second polling
+        // loop that may miss the game's one-time native FPS setter call.
+        const auto started = std::chrono::steady_clock::now();
         void* handle = nullptr;
-        for (int i = 0; i < 10; ++i) {
-            if ((handle = xdl_open("libil2cpp.so", 0))) {
+        bool ready = false;
+        int probe_count = 0;
+        while (true) {
+            ++probe_count;
+            if (!handle) handle = xdl_open("libil2cpp.so", 0);
+            if (handle && Unity::GetInstance().Init(handle, false)) {
+                ready = true;
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - started).count();
+            const int pause_ms = UnityStartup::SleepMs(elapsed);
+            if (pause_ms == 0) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(pause_ms));
         }
-        if (handle) {
-            Unity::GetInstance().Init(handle);
-            if (cfg.mod_opcode_) {
-                LOG("OEM-safe build: opcode modification was requested but is disabled");
-            }
-            Unity::GetInstance().SetFrameRate(cfg.fps_, false);
-            Unity::GetInstance().SetResolution(cfg.scale_);
 
-            LOG("***** finished *****");
+        const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - started).count();
+        if (!ready) {
+            ERROR("Unity FPS hook NOT_ARMED: IL2CPP setter unavailable after %lldms/%d attempts",
+                static_cast<long long>(elapsed_ms), probe_count);
             return;
         }
-        else {
-            ERROR("Failed to open libil2cpp.so");
+        if (cfg.mod_opcode_) {
+            LOG("OEM-safe build: opcode modification was requested but is disabled");
+        }
+        // Keep Unity resolution handling entirely out of the FPS-only path.
+        if (OemPolicy::ShouldSetResolution(cfg.scale_)) {
+            LOG("Resolution scaling deferred: no unverified Unity ABI calls");
+        }
+        if (!Unity::GetInstance().EnableFrameRateInterceptor(cfg.fps_, cfg.render_interval_)) {
+            ERROR("Unity native FPS interceptor installation failed");
+            return;
+        }
+        LOG("Unity FPS hook ARMED after %lldms/%d probes, awaiting game-originated setter calls",
+            static_cast<long long>(elapsed_ms), probe_count);
+
+        // Read-only counter: no arbitrary off-thread Unity API invocation.
+        std::this_thread::sleep_for(std::chrono::seconds(8));
+        const unsigned hit_count = Unity::GetInstance().InterceptedFrameRateCalls();
+        if (hit_count == 0) {
+            ERROR("Unity FPS hook NO_HIT after 8s: game did not call the intercepted setter; FPS unlock unverified");
+        } else {
+            LOG("Unity FPS hook HIT count=%u; native request intercepted, actual presented FPS still unverified",
+                hit_count);
         }
     }
 } // namespace FPSLimiter

@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Unlocker - Fengchi Universal
-version=0.2.0-alpha2
-versionCode=2
+name=Unity FPS Control · SukiSU Ultra WebUI (Dev)
+version=0.7.0-dev.hotfix3
+versionCode=703
 author=hexstr contributors; OEM-safe fork maintainers
-description=Model-independent opt-in Unity FPS control with read-only Fengchi capability probes; preserves OEM superframe/super-resolution.
+description=SukiSU Ultra ksu.pm() native package scan, per-game FPS profiles and runtime Zygisk diagnostics, read-only COSA bridge. Dev; FPS uplift unverified.

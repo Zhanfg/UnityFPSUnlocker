@@ -1,7 +1,8 @@
 {
   "global": {
-    "delay": 8,
+    "delay": 0,
     "mod_opcode": false,
+    "render_interval": 0,
     "fps": 0,
     "scale": -1
   },

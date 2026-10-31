@@ -1,0 +1,40 @@
+name: Unity Setter Hook Runtime Integration
+
+on:
+  push:
+    branches: [feature/unified-fps-engine-runtime]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hook-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned Dobby backend
+        run: |
+          git clone --depth=1 https://github.com/BepInEx/Dobby.git .out/dobby-host-src
+          cd .out/dobby-host-src
+          git fetch --depth=1 origin 9d271803881f467aabfc24593c7dcaeb710fe861
+          git checkout --detach 9d271803881f467aabfc24593c7dcaeb710fe861
+          test "$(git rev-parse HEAD)" = "9d271803881f467aabfc24593c7dcaeb710fe861"
+      - name: Build Dobby host static backend
+        run: |
+          cmake -S .out/dobby-host-src -B .out/dobby-host-build -G Ninja \
+            -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DCMAKE_BUILD_TYPE=Release -DDOBBY_DEBUG=OFF \
+            -DDOBBY_GENERATE_SHARED=OFF -DDynamicBinaryInstrument=OFF \
+            -DPlugin.SymbolResolver=OFF -DPlugin.GlobalOffsetTableHook=OFF
+          cmake --build .out/dobby-host-build --target dobby --parallel 4
+          test -s .out/dobby-host-build/libdobby.a
+      - name: Verify native inline hook + original trampoline behavior
+        run: |
+          c++ -std=c++17 -O0 -fno-omit-frame-pointer -Wall -Wextra -Werror \
+            -I.out/dobby-host-src/include tests/unity_setter_hook_integration.cpp \
+            .out/dobby-host-build/libdobby.a -ldl -pthread -o /tmp/unity_setter_hook_integration
+          /tmp/unity_setter_hook_integration
