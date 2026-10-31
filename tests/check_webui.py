@@ -70,7 +70,13 @@ assert 'managed)' in scrc and 'active)' in scrc
 for element_id in ("measure", "evidence", "diagnose", "diagOutput"):
     assert element_id in m.ids
 assert 'nativePackages()' in js
-assert 'sukisuPm()' in js\nassert 'sukisu.listPackages("user")' in js\nassert 'api.listPackages("user")' in js\nassert 'pm.getPackagesInfo(arg)' in js\nassert 'listUserPackages' in js and 'listPackages' in js\nassert 'ksu://icon/' in js\nassert 'ZYGISK_PROVIDER_CANDIDATES' in (root / 'packaging/game-diag.sh').read_text()
+assert 'sukisuPm()' in js
+assert 'sukisu.listPackages("user")' in js
+assert 'api.listPackages("user")' in js
+assert 'pm.getPackagesInfo(arg)' in js
+assert 'listUserPackages' in js and 'listPackages' in js
+assert 'ksu://icon/' in js
+assert 'ZYGISK_PROVIDER_CANDIDATES' in (root / 'packaging/game-diag.sh').read_text()
 assert 'root("measure " + shellEscape(pkg), true)' in js
 assert 'window[callback] = finish;' in js
 assert 'api.exec(command, callback)' in js
