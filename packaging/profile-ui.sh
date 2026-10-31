@@ -75,6 +75,9 @@ case "$ACTION" in
     exec sh "$MODDIR/../opgce-bridge.sh" status ;;
   opgce-list)
     exec sh "$MODDIR/../opgce-bridge.sh" list ;;
+  diagnose)
+    [ "$#" -eq 2 ] || exit 64
+    exec sh "$MODDIR/../game-diag.sh" "$2" ;;
   measure)
     [ "$#" -eq 2 ] || exit 64
     case "$2" in
