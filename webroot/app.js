@@ -4,7 +4,7 @@
   const BRIDGE = ROOT + "/bin/profile-ui.sh";
   const $ = id => document.getElementById(id);
   const validPkg = pkg => /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg) && pkg.length <= 220;
-  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
+  const state = { apps:[], names:{}, icons:{}, selected:"", profiles:{}, profileReady:false, filter:"games", caps:"", opgce:{installed:false,enabled:false,version:"",mode:"",active:0,catalog:new Set()}, scrc:{installed:false,enabled:false,version:"",count:0,dual:false,opgs:"",kernel:"",catalog:new Set()} };
   const notice = (message, error=false) => { $("notice").textContent=message; $("notice").classList.toggle("error",error); };
   const shellEscape = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
   let requestSeq = 0;
@@ -85,6 +85,7 @@
     const raw=await root("read");
     let data;try {data=JSON.parse(raw);}catch(_){throw new Error("设备 TargetList.json 无法解析；已拒绝覆盖原配置");}
     state.profiles=(data && data.custom && typeof data.custom==="object")?data.custom:{};
+    state.profileReady=true;
   }
   async function loadOpgce() {
     try {
@@ -242,7 +243,8 @@
     $("delay").value=Number.isInteger(p.delay)?p.delay:0;
     $("cpu").value=p.cpu_min_khz?Math.round(p.cpu_min_khz/1000):"";
     $("gpu").value=p.gpu_min_mhz||"";
-    $("remove").disabled=!saved(pkg);
+    $("remove").disabled=!state.profileReady || !saved(pkg);
+    $("save").disabled=!state.profileReady;
     $("evidence").hidden=true;
     $("scrcProfile").textContent = state.scrc.enabled
       ? state.scrc.catalog.has(pkg)
@@ -344,5 +346,20 @@
     for(const other of document.querySelectorAll("[data-filter]"))other.classList.toggle("on",other===f);
     renderApps();
   });
-  guard(async()=>{await loadProfiles();await loadCaps();await loadOpgce();await loadScrc();await scan();});
+  guard(async()=>{
+    let profileFailure = null;
+    try { await loadProfiles(); } catch (e) {
+      profileFailure = e;
+      state.profileReady = false;
+      state.profiles = {};
+    }
+    await loadCaps();
+    await loadOpgce();
+    await loadScrc();
+    await scan();
+    if (profileFailure) {
+      notice("游戏列表可用，但配置程序异常；请安装 hotfix1 或在 Root Shell 执行 chmod 755 /data/adb/modules/unityfpsunlocker_oemsafe/bin/fps-profilectl。详情：" + String(profileFailure.message || profileFailure), true);
+      renderEditor();
+    }
+  });
 })();
