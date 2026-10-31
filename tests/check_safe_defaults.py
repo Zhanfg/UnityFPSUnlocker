@@ -24,3 +24,12 @@ assert "DobbyPrepare(function_address" in unity, "Publish trampoline before acti
 assert "DobbyCommit(function_address)" in unity, "Require explicit hook commit"
 assert "DobbyDestroy(function_address)" in unity, "Recover from failed partial hook commits"
 print("OEM-preservation static checks passed")
+
+# A WebUI write atomically renames TargetList.json, so inode watchers are stale.
+# All per-game configurations must be reloaded at specialization time.
+assert 'const auto result = LoadConfig(); !result.ok()' in main
+assert 'std::lock_guard<std::mutex> lock(config_mutex);' in main
+assert 'global_cfg = ConfigValue(0, 0, false, -1.0f, false);' in main
+assert 'file_watch_listener' not in main
+assert 'watch_descriptor' not in main
+assert 'CompanionEntry(int s)' in main
