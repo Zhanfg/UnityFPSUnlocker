@@ -1,4 +1,4 @@
-# Unity FPS Unlocker WebUI (v0.5.0-dev)
+# Unity FPS Unlocker WebUI (v0.6.0-dev)
 
 **Development build**: KernelSU / KernelSU-Next / APatch manager WebUI. Android ARM64 + Zygisk required for Unity native FPS interception. Not a verified general-purpose UE or Fengchi frame-generation unlocker.
 
@@ -36,3 +36,7 @@ All WebUI operations are local. The app list and labels are never transmitted ex
 ## OPGCE compatibility
 
 See [OPGCE_BRIDGE.md](OPGCE_BRIDGE.md). Installed OPGCE strategies are detected read-only and suppress this module's competing CPU/GPU frequency floors for matched games. This does not copy encrypted game strategies, call inject_core or guarantee real FPS.
+
+## SCRC compatibility
+
+See [SCRC_BRIDGE.md](SCRC_BRIDGE.md). SCRC metadata is read only. If SCRC is enabled, our CPU/GPU frequency-floor writes are suspended for all games as the upstream requires no competing scheduling modifications. If both SCRC and OPGCE are enabled, the interface warns about two competing COSA injectors; it does not attempt to disable or repair either one.
