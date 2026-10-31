@@ -1,6 +1,6 @@
 id=unityfpsunlocker_oemsafe
-name=Unity FPS Unlocker + OPGCE Bridge (Dev)
-version=0.5.0-dev
-versionCode=500
+name=Unity FPS Unlocker · COSA Compatibility (Dev)
+version=0.6.0-dev
+versionCode=600
 author=hexstr contributors; OEM-safe fork maintainers
-description=Unity FPS WebUI + read-only OPGCE COSA strategy detection / scheduler coexistence. DEV: actual game FPS, UE and Fengchi interpolation unverified.
+description=Unity FPS WebUI with read-only OPGCE/SCRC COSA recognition and non-conflicting frequency floors. DEV: real FPS not verified.
