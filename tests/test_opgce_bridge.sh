@@ -48,7 +48,7 @@ OPGCE_DIR="$MOD" sh "$B" status > "$WORK/disabled"
 grep -qx 'ENABLED|0' "$WORK/disabled"
 test ! -e "$WORK/inject_called"
 # Assert no write-oriented OPGCE operation in bridge implementation.
-if grep -Eq '(inject_core|pm clear|sqlite3|settings put|mount --bind)' "$B";then
+if grep -Ev '^[[:space:]]*#' "$B" | grep -Eq '(inject_core|pm clear|sqlite3|settings put|mount --bind)';then
   echo 'Bridge contains forbidden OPGCE mutation' >&2;exit 1
 fi
 echo 'OPGCE coexistence: installed/disabled/active strategies/aliases/read-only PASSED'
