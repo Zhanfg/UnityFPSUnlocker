@@ -97,9 +97,6 @@ absl::Status LoadConfig() {
 // save uses an atomic rename, which invalidates inode-based inotify watches.
 // Re-read on EVERY specialization; the JSON is small and is read in root
 // companion context, not on a game's rendering or main thread.
-REGISTER_ZYGISK_MODULE(MyModule)
-REGISTER_ZYGISK_COMPANION(CompanionEntry)
-
 void CompanionEntry(int s) {
     const std::string package_name = read_string(s);
     std::lock_guard<std::mutex> lock(config_mutex);
@@ -126,6 +123,9 @@ void CompanionEntry(int s) {
         write_int(s, global_cfg.render_interval_ ? 1 : 0);
     }
 }
+
+REGISTER_ZYGISK_MODULE(MyModule)
+REGISTER_ZYGISK_COMPANION(CompanionEntry)
 
 void MyModule::onLoad(Api* api, JNIEnv* env) {
     this->api = api;
