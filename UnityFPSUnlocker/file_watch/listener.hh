@@ -23,6 +23,7 @@ namespace FileWatch {
 
     private:
         int inotify_fd_;
+        bool epoll_registered_ = false;
         absl::flat_hash_map<int, std::tuple<OnModified, OnDeleted>> registered_;
     };
 } // namespace FileWatch

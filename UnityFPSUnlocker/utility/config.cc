@@ -23,9 +23,10 @@ namespace Utility {
             std::string content((std::istreambuf_iterator<char>(file)),
                                 (std::istreambuf_iterator<char>()));
             if (doc.Parse(content.c_str()).HasParseError()) {
-                if (content.size() > 2) {
-                    content[doc.GetErrorOffset() - 2] = '-';
-                    content[doc.GetErrorOffset() - 1] = '>';
+                const size_t error_offset = doc.GetErrorOffset();
+                if (error_offset >= 2 && error_offset <= content.size()) {
+                    content[error_offset - 2] = '-';
+                    content[error_offset - 1] = '>';
                 }
                 ERROR("[%s] %s #%d\nFile: %s %s %zu %s", __FUNCTION__, __FILE__, __LINE__,
                       file_path, GetParseError_En(doc.GetParseError()), doc.GetErrorOffset(), content.c_str());
