@@ -82,9 +82,11 @@ bool get_client_cred(int fd, sock_cred* cred) {
     if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, cred, &len) != 0)
         return false;
     char buf[4096];
-    len = sizeof(buf);
+    len = sizeof(buf) - 1;
     if (getsockopt(fd, SOL_SOCKET, SO_PEERSEC, buf, &len) != 0)
         return false;
+    if (len >= sizeof(buf))
+        len = sizeof(buf) - 1;
     buf[len] = '\0';
     cred->context = buf;
     return true;
@@ -219,8 +221,11 @@ void write_int_be(int fd, int val) {
 void read_string(int fd, std::string& str) {
     int len = read_int(fd);
     str.clear();
-    str.resize(len);
-    xxread(fd, str.data(), len);
+    if (len < 0) {
+        return;
+    }
+    str.resize(static_cast<size_t>(len));
+    xxread(fd, str.data(), static_cast<size_t>(len));
 }
 
 string read_string(int fd) {

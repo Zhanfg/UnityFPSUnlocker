@@ -25,10 +25,13 @@ namespace FileWatch {
             return -1;
         }
 
-        auto res = EPoller::reserved_list_[0]->AddSocket(inotify_fd_, EPOLLIN);
-        if (!res.ok()) {
-            ERROR("[Listener::Register] %s", res.message().data());
-            return -1;
+        if (!epoll_registered_) {
+            auto res = EPoller::reserved_list_[0]->AddSocket(inotify_fd_, EPOLLIN);
+            if (!res.ok()) {
+                ERROR("[Listener::Register] %s", res.message().data());
+                return -1;
+            }
+            epoll_registered_ = true;
         }
 
         registered_[wd] = std::make_tuple(mod_callback, del_callback);

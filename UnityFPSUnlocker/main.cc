@@ -187,10 +187,14 @@ void MyModule::ForHoudini() {
         }
 
         auto app_info = Utility::GetApplicationInfo(env);
+        if (!app_info.ok()) {
+            ERROR("%s", app_info.status().message().data());
+            return;
+        }
         auto path = Utility::GetLibraryPath(env, app_info.value());
 
         if (!path.ok()) {
-            ERROR("%s", vms.status().message().data());
+            ERROR("%s", path.status().message().data());
             return;
         }
 
